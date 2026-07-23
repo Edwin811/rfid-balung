@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
         Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
+        Route::post('/backup/csv', [BackupController::class, 'exportCsv'])->name('backup.csv');
         Route::post('/backup/clean-duplicates', [BackupController::class, 'cleanDuplicates'])->name('backup.clean_duplicates');
         Route::get('/backup/download/{filename}', [BackupController::class, 'download'])->name('backup.download');
 

@@ -163,11 +163,11 @@
                 <img src="{{ asset('logo.png') }}" alt="Logo Desa Balunglor" class="h-8 w-auto">
                 <div>
                     <p class="font-bold text-slate-200">Pemerintah Desa Balunglor &copy; 2026</p>
-                    <p class="text-slate-500 mt-0.5">Sistem Presensi Biometrik Terintegrasi (PROSENDI 2026 &bull; Universitas Jember)</p>
+                    <p class="text-slate-500 mt-0.5">Sistem Presensi Biometrik Terintegrasi</p>
                 </div>
             </div>
             <div class="text-right text-slate-500 font-medium">
-                <span>Mesin Absensi: Magic MP340 (IP: 169.254.176.250 / 192.168.1.200)</span>
+                <span>(PROSENDI 2026 &bull; FASILKOM X TEKNIK ELEKTRO UNIVERSITAS JEMBER)</span>
             </div>
         </div>
     </footer>
