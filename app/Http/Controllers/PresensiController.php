@@ -39,6 +39,8 @@ class PresensiController extends Controller
                 'jabatan' => $p->pegawai->jabatan ?? '-',
                 'jam_masuk' => $p->jam_masuk ?? '-',
                 'jam_pulang' => $p->jam_pulang ?? '-',
+                'tipe_masuk' => $p->tipe_verifikasi_masuk ?? 'fingerprint',
+                'tipe_pulang' => $p->tipe_verifikasi_pulang ?? 'fingerprint',
                 'status' => $p->status,
                 'keterangan' => $p->keterangan ?? '-',
             ];
@@ -113,6 +115,8 @@ class PresensiController extends Controller
                     'jabatan' => $p->pegawai->jabatan ?? '-',
                     'jam_masuk' => $p->jam_masuk ?? '-',
                     'jam_pulang' => $p->jam_pulang ?? '-',
+                    'tipe_masuk' => $p->tipe_verifikasi_masuk ?? 'fingerprint',
+                    'tipe_pulang' => $p->tipe_verifikasi_pulang ?? 'fingerprint',
                     'status' => $p->status,
                     'keterangan' => $p->keterangan ?? '-',
                 ];

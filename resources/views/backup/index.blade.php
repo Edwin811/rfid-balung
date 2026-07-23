@@ -8,17 +8,27 @@
     <!-- Action Card -->
     <div class="bg-white border border-slate-200 rounded-xl p-6 mb-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
-            <h3 class="font-bold text-slate-800 text-base mb-1">Backup Database Manual (.SQL)</h3>
-            <p class="text-xs text-slate-500">Membuat cadangan lengkap basis data MySQL ke folder lokal PC Server untuk pemeliharaan data.</p>
+            <h3 class="font-bold text-slate-800 text-base mb-1">Backup Data Presensi (.SQL)</h3>
+            <p class="text-xs text-slate-500">Membuat cadangan khusus data inti presensi, aparatur desa, dan perizinan tanpa menyertakan log mentah mesin.</p>
         </div>
 
-        <form action="{{ route('backup.store') }}" method="POST">
-            @csrf
-            <button type="submit" class="px-5 py-3 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center space-x-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                <span>Backup Sekarang</span>
-            </button>
-        </form>
+        <div class="flex items-center space-x-3">
+            <form action="{{ route('backup.clean_duplicates') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus semua baris data log duplikat dari database?')">
+                @csrf
+                <button type="submit" class="px-4 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>Bersihkan Sampah Log</span>
+                </button>
+            </form>
+
+            <form action="{{ route('backup.store') }}" method="POST">
+                @csrf
+                <button type="submit" class="px-5 py-3 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    <span>Backup Sekarang</span>
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Backup Files Table -->

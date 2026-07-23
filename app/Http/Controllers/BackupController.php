@@ -47,7 +47,8 @@ class BackupController extends Controller
         $filename = 'backup_presensi_balunglor_' . date('Ymd_His') . '.sql';
         $filepath = $backupDir . '/' . $filename;
 
-        $tables = ['users', 'pegawai', 'presensi', 'perizinan', 'audit_logs', 'device_logs'];
+        // Backup khusus data inti presensi & aparatur desa (Tanpa log mentah device/audit)
+        $tables = ['users', 'pegawai', 'presensi', 'perizinan'];
         $sqlContent = "-- Backup Presensi Desa Balung Lor\n-- Tanggal: " . date('Y-m-d H:i:s') . "\n\n";
 
         foreach ($tables as $table) {
@@ -88,5 +89,21 @@ class BackupController extends Controller
         }
 
         return response()->download($filepath);
+    }
+
+    public function cleanDuplicates()
+    {
+        // Hapus sampah data log duplikat lama agar database 100% ringkas & bersih
+        DB::statement("
+            DELETE d1 FROM device_logs d1
+            INNER JOIN device_logs d2 
+            WHERE d1.id > d2.id 
+              AND d1.id_mesin_device = d2.id_mesin_device 
+              AND d1.timestamp_absen = d2.timestamp_absen
+        ");
+
+        AuditLogger::log('clean_duplicate_logs', null, null, null, []);
+
+        return back()->with('success', 'Sampah data log duplikat berhasil dibersihkan! Ukuran database kembali ringkas & super cepat.');
     }
 }

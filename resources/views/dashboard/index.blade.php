@@ -126,8 +126,24 @@
                                     <div class="font-bold text-slate-800" x-text="row.nama"></div>
                                     <div class="text-[11px] text-slate-500" x-text="row.jabatan"></div>
                                 </td>
-                                <td class="p-3 font-mono text-slate-700 font-bold" x-text="row.jam_masuk"></td>
-                                <td class="p-3 font-mono text-slate-700 font-bold" x-text="row.jam_pulang"></td>
+                                <td class="p-3">
+                                    <div class="font-mono text-slate-800 font-bold" x-text="row.jam_masuk"></div>
+                                    <template x-if="row.jam_masuk && row.jam_masuk !== '-'">
+                                        <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5"
+                                            :class="row.tipe_masuk === 'rfid' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
+                                            <span x-text="row.tipe_masuk === 'rfid' ? '💳 RFID' : '👆 Biometrik'"></span>
+                                        </span>
+                                    </template>
+                                </td>
+                                <td class="p-3">
+                                    <div class="font-mono text-slate-800 font-bold" x-text="row.jam_pulang"></div>
+                                    <template x-if="row.jam_pulang && row.jam_pulang !== '-'">
+                                        <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5"
+                                            :class="row.tipe_pulang === 'rfid' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
+                                            <span x-text="row.tipe_pulang === 'rfid' ? '💳 RFID' : '👆 Biometrik'"></span>
+                                        </span>
+                                    </template>
+                                </td>
                                 <td class="p-3">
                                     <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider"
                                         :class="{

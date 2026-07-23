@@ -55,30 +55,33 @@ class AdmsController extends Controller
             $punch = $logData['punch'] ?? null;
 
             if ($userId && $timestamp) {
-                // Determine verification type (default fingerprint or rfid)
                 $tipeVerifikasi = isset($logData['tipe_verifikasi']) ? $logData['tipe_verifikasi'] : 'fingerprint';
 
-                $deviceLog = DeviceLog::create([
-                    'id_mesin_device' => (string) $userId,
-                    'timestamp_absen' => $timestamp,
-                    'tipe_verifikasi' => $tipeVerifikasi,
-                    'raw_data' => $logData,
-                    'is_processed' => false,
-                    'created_at' => now(),
-                ]);
+                // Cegah duplikasi penumpukan baris di database
+                $exists = DeviceLog::where('id_mesin_device', (string) $userId)
+                    ->where('timestamp_absen', $timestamp)
+                    ->exists();
 
-                // Process log into presensi table
-                $this->attendanceService->processLog(
-                    (string) $userId,
-                    $timestamp,
-                    $tipeVerifikasi,
-                    $logData
-                );
+                if (!$exists) {
+                    DeviceLog::create([
+                        'id_mesin_device' => (string) $userId,
+                        'timestamp_absen' => $timestamp,
+                        'tipe_verifikasi' => $tipeVerifikasi,
+                        'raw_data' => $logData,
+                        'is_processed' => true,
+                        'created_at' => now(),
+                    ]);
 
-                $deviceLog->is_processed = true;
-                $deviceLog->save();
+                    // Process log into presensi table
+                    $this->attendanceService->processLog(
+                        (string) $userId,
+                        $timestamp,
+                        $tipeVerifikasi,
+                        $logData
+                    );
 
-                $savedCount++;
+                    $savedCount++;
+                }
             }
         }
 

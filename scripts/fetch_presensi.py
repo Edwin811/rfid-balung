@@ -18,7 +18,6 @@ SECRET_KEY = os.getenv('ADMS_SECRET_KEY', 'balunglor_secret_2026')
 POLL_INTERVAL = int(os.getenv('ZKT_POLL_INTERVAL', 3))
 
 def format_card_uid(card_val):
-    """Format nomor kartu RFID ke format 10-digit (misal: 0012345678)"""
     if not card_val or str(card_val).strip() in ['0', '']:
         return '-'
     try:
@@ -45,8 +44,16 @@ def kirim_ke_laravel(logs):
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [API ERROR] Gagal mengirim ke Laravel: {e}")
 
+def determine_verify_type(status_val):
+    st = str(status_val)
+    if st == '2':
+        return 'rfid'
+    elif st == '1' or st == '4':
+        return 'fingerprint'
+    return 'fingerprint'
+
 def mode_live_stream():
-    """Mode Live Event Streaming (< 0.5 detik instant sync saat sidik jari/kartu ditempelkan)"""
+    """Mode Live Event Streaming (< 0.5 detik instant sync)"""
     print(f"===================================================================")
     print(f"    MODE REAL-TIME LIVE CAPTURE (INSTANT SYNC < 0.5 DETIK)         ")
     print(f"    IP Mesin   : {IP_MESIN}:{PORT}                                 ")
@@ -58,23 +65,16 @@ def mode_live_stream():
         conn = None
         try:
             conn = zk.connect()
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung! Mengambil data peta kartu RFID...")
-
-            # Ambil peta kartu pengguna
             user_cards = {}
             try:
                 users = conn.get_users()
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Total pengguna di mesin: {len(users)}")
                 for u in users:
-                    card_uid = format_card_uid(u.card)
-                    user_cards[str(u.user_id)] = card_uid
-                    print(f"    --> ID: {u.user_id:<4} | Nama: {u.name:<18} | Card UID (10-Digit): {card_uid}")
-            except Exception as e_u:
-                print(f"[NOTE] Tidak dapat mengambil daftar user: {e_u}")
+                    user_cards[str(u.user_id)] = format_card_uid(u.card)
+            except Exception:
+                pass
 
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] [OK] Standby mendengarkan scan sidik jari/kartu RFID...")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Standby mendengarkan presensi RFID / Biometrik...")
             
-            # Mendengarkan event scan mesin secara live (real-time stream)
             for event in conn.live_capture():
                 if event is None:
                     continue
@@ -82,24 +82,25 @@ def mode_live_stream():
                 uid_str = str(event.user_id)
                 card_number = user_cards.get(uid_str, '-')
                 ts_str = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                v_type = determine_verify_type(event.status)
 
-                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] [INSTANT SCAN EVENT DETECTED!]")
-                print(f"  --> User ID    : {uid_str}")
-                print(f"  --> Card UID   : {card_number}")
-                print(f"  --> Waktu      : {ts_str}")
-                print(f"  --> Status     : {event.status}")
+                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] [PRESENSI SCAN DETECTED!]")
+                print(f"  --> User ID     : {uid_str}")
+                print(f"  --> Metode      : {v_type.upper()} (Status {event.status})")
+                print(f"  --> Card UID    : {card_number}")
+                print(f"  --> Waktu       : {ts_str}")
 
-                # Langsung kirim ke Laravel dalam < 0.5 detik
                 kirim_ke_laravel([{
                     'user_id': uid_str,
                     'card_uid': card_number,
                     'timestamp': ts_str,
                     'status': event.status,
+                    'tipe_verifikasi': v_type,
                     'punch': getattr(event, 'punch', 0)
                 }])
 
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [LIVE ERROR] Koneksi terputus: {e}. Mencoba menghubungkan kembali dalam 3 detik...")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [LIVE ERROR] {e}")
             time.sleep(3)
         finally:
             if conn:
@@ -116,36 +117,29 @@ def ambil_dan_kirim_data():
     try:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [*] Menghubungkan ke {IP_MESIN}:{PORT} via UDP...")
         conn = zk.connect()
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung ke mesin ZKTeco!")
-
-        # Peta kartu pengguna
         user_cards = {}
         try:
             users = conn.get_users()
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Total Pengguna di Mesin: {len(users)}")
-            print("-" * 65)
-            print(f"{'User ID':<8} | {'Nama Pengguna':<25} | {'Card UID (10-Digit)':<15}")
-            print("-" * 65)
             for u in users:
-                c_uid = format_card_uid(u.card)
-                user_cards[str(u.user_id)] = c_uid
-                print(f"{u.user_id:<8} | {u.name:<25} | {c_uid:<15}")
-            print("-" * 65)
-        except Exception as e_users:
-            print(f"[NOTE] Gagal membaca user: {e_users}")
+                user_cards[str(u.user_id)] = format_card_uid(u.card)
+        except Exception:
+            pass
 
         attendances = conn.get_attendance()
-        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] [OK] Total log presensi di mesin: {len(attendances)}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Total log presensi di mesin: {len(attendances)}")
 
         payload_logs = []
         for log in attendances:
             uid_str = str(log.user_id)
             c_uid = user_cards.get(uid_str, '-')
+            v_type = determine_verify_type(log.status)
+
             payload_logs.append({
                 'user_id': uid_str,
                 'card_uid': c_uid,
                 'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                 'status': log.status,
+                'tipe_verifikasi': v_type,
                 'punch': log.punch
             })
 

@@ -116,12 +116,7 @@
                     <span>Laporan & Export</span>
                 </a>
 
-                @if(Auth::user()->hasRole(['admin', 'kepala_desa', 'wakil_kepala_desa']))
-                <a href="{{ route('audit_log.index') }}" class="px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center space-x-2 {{ request()->routeIs('audit_log.*') ? 'bg-white text-jember-900 font-extrabold shadow-md' : 'text-red-100 hover:bg-red-900/70' }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>Audit Log</span>
-                </a>
-                @endif
+
 
                 @if(Auth::user()->isAdmin())
                 <a href="{{ route('users.index') }}" class="px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center space-x-2 {{ request()->routeIs('users.*') ? 'bg-white text-jember-900 font-extrabold shadow-md' : 'text-red-100 hover:bg-red-900/70' }}">
