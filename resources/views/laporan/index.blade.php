@@ -1,61 +1,131 @@
 @extends('layouts.app')
 
-@section('title', 'Laporan & Rekapitulasi Presensi')
+@section('title', 'Laporan & Rekapitulasi Presensi Lengkap')
 
 @section('content')
-<div>
+<div x-data="{ mode: '{{ $jenisLaporan }}' }">
 
-    <!-- Filter & Action Bar -->
-    <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <form action="{{ route('laporan.index') }}" method="GET" class="flex items-center space-x-3 w-full md:w-auto">
+    <!-- Filter Bar Card -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-6 shadow-sm">
+        <div class="border-b border-slate-100 pb-4 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-                <label for="bulan" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Bulan</label>
-                <select id="bulan" name="bulan" class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
-                    @for($m=1; $m<=12; $m++)
-                    <option value="{{ $m }}" {{ $bulan == $m ? 'selected' : '' }}>
-                        {{ \Carbon\Carbon::createFromDate(2026, $m, 1)->locale('id')->isoFormat('MMMM') }}
-                    </option>
-                    @endfor
-                </select>
+                <h3 class="font-extrabold text-slate-900 text-lg">Filter & Generator Laporan Presensi</h3>
+                <p class="text-xs text-slate-500 font-medium">Filter laporan presensi berdasarkan periode bulan, rentang tanggal harian, aparatur desa, dan status kehadiran.</p>
             </div>
 
-            <div>
-                <label for="tahun" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Tahun</label>
-                <select id="tahun" name="tahun" class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
-                    @for($y=2024; $y<=2030; $y++)
-                    <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
-                </select>
-            </div>
-
-            <div class="self-end">
-                <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition">
-                    Tampilkan Rekap
+            <!-- Mode Selector Tabs -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+                <button type="button" @click="mode = 'bulanan'" :class="mode === 'bulanan' ? 'bg-red-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'" class="px-4 py-2 rounded-lg transition">
+                    Rekap Bulanan
+                </button>
+                <button type="button" @click="mode = 'harian'" :class="mode === 'harian' ? 'bg-red-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'" class="px-4 py-2 rounded-lg transition">
+                    Rincian Harian / Rentang
+                </button>
+                <button type="button" @click="mode = 'individu'" :class="mode === 'individu' ? 'bg-red-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'" class="px-4 py-2 rounded-lg transition">
+                    Per Aparatur (Individu)
                 </button>
             </div>
-        </form>
-
-        <!-- Export Buttons -->
-        <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
-            <a href="{{ route('laporan.excel', ['bulan' => $bulan, 'tahun' => $tahun]) }}"
-                class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                <span>Export Excel (.xlsx)</span>
-            </a>
-
-            <a href="{{ route('laporan.pdf', ['bulan' => $bulan, 'tahun' => $tahun]) }}" target="_blank"
-                class="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                <span>Export PDF (.pdf)</span>
-            </a>
         </div>
+
+        <form action="{{ route('laporan.index') }}" method="GET" class="space-y-4">
+            <input type="hidden" name="jenis_laporan" :value="mode">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Filter Bulan & Tahun (Bila Mode Bulanan) -->
+                <div x-show="mode === 'bulanan'">
+                    <label for="bulan" class="block text-xs font-bold uppercase text-slate-600 mb-1">Bulan</label>
+                    <select id="bulan" name="bulan" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        @for($m=1; $m<=12; $m++)
+                        <option value="{{ $m }}" {{ $bulan == $m ? 'selected' : '' }}>
+                            {{ \Carbon\Carbon::createFromDate(2026, $m, 1)->locale('id')->isoFormat('MMMM') }}
+                        </option>
+                        @endfor
+                    </select>
+                </div>
+
+                <div x-show="mode === 'bulanan'">
+                    <label for="tahun" class="block text-xs font-bold uppercase text-slate-600 mb-1">Tahun</label>
+                    <select id="tahun" name="tahun" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        @for($y=2024; $y<=2030; $y++)
+                        <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
+                    </select>
+                </div>
+
+                <!-- Filter Tanggal Mulai & Selesai (Bila Mode Harian / Individu) -->
+                <div x-show="mode !== 'bulanan'">
+                    <label for="tanggal_mulai" class="block text-xs font-bold uppercase text-slate-600 mb-1">Tanggal Mulai</label>
+                    <input type="date" id="tanggal_mulai" name="tanggal_mulai" value="{{ $tanggalMulai }}"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                </div>
+
+                <div x-show="mode !== 'bulanan'">
+                    <label for="tanggal_selesai" class="block text-xs font-bold uppercase text-slate-600 mb-1">Tanggal Selesai</label>
+                    <input type="date" id="tanggal_selesai" name="tanggal_selesai" value="{{ $tanggalSelesai }}"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                </div>
+
+                <!-- Filter Aparatur Desa -->
+                <div>
+                    <label for="pegawai_id" class="block text-xs font-bold uppercase text-slate-600 mb-1">Filter Aparatur Desa</label>
+                    <select id="pegawai_id" name="pegawai_id" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        <option value="">-- Semua Aparatur Desa --</option>
+                        @foreach($pegawaiList as $p)
+                        <option value="{{ $p->id }}" {{ $pegawaiId == $p->id ? 'selected' : '' }}>
+                            {{ $p->nama_lengkap }} ({{ $p->jabatan }})
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Filter Status Kehadiran (Halaman Harian / Individu) -->
+                <div x-show="mode !== 'bulanan'">
+                    <label for="status" class="block text-xs font-bold uppercase text-slate-600 mb-1">Filter Status</label>
+                    <select id="status" name="status" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        <option value="">-- Semua Status --</option>
+                        <option value="hadir" {{ $status == 'hadir' ? 'selected' : '' }}>Hadir Tepat</option>
+                        <option value="terlambat" {{ $status == 'terlambat' ? 'selected' : '' }}>Terlambat</option>
+                        <option value="sakit" {{ $status == 'sakit' ? 'selected' : '' }}>Sakit</option>
+                        <option value="izin" {{ $status == 'izin' ? 'selected' : '' }}>Izin</option>
+                        <option value="dispen" {{ $status == 'dispen' ? 'selected' : '' }}>Dispensasi</option>
+                        <option value="tidak_hadir" {{ $status == 'tidak_hadir' ? 'selected' : '' }}>Tidak Hadir</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                <div class="text-xs text-slate-500 font-medium">
+                    Status Filter: <strong class="text-slate-800 uppercase" x-text="mode"></strong>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button type="submit" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow">
+                        Terapkan Filter
+                    </button>
+
+                    <!-- Export Buttons (With All Active Query Parameters) -->
+                    <a href="{{ route('laporan.excel', request()->all()) }}"
+                        class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Export Excel (.xls)</span>
+                    </a>
+
+                    <a href="{{ route('laporan.pdf', request()->all()) }}" target="_blank"
+                        class="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        <span>Export PDF (.pdf)</span>
+                    </a>
+                </div>
+            </div>
+        </form>
     </div>
 
-    <!-- Rekapitulasi Table -->
-    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <!-- Mode 1: Table Rekap Bulanan -->
+    @if($jenisLaporan === 'bulanan')
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wide">
-                Rekap Kehadiran Aparatur Desa &bull; {{ \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->locale('id')->isoFormat('MMMM YYYY') }}
+            <h3 class="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
+                Rekapitulasi Bulanan Aparatur Desa &bull; {{ \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->locale('id')->isoFormat('MMMM YYYY') }}
             </h3>
         </div>
 
@@ -64,8 +134,10 @@
                 <thead>
                     <tr class="border-b border-slate-200 text-slate-600 uppercase tracking-wider bg-slate-100 font-bold">
                         <th class="p-4">No</th>
-                        <th class="p-4">Aparatur Desa</th>
-                        <th class="p-4 text-center">Hadir Tepat</th>
+                        <th class="p-4">ID Mesin</th>
+                        <th class="p-4">Nama Aparatur Desa</th>
+                        <th class="p-4">Jabatan</th>
+                        <th class="p-4 text-center">Hadir</th>
                         <th class="p-4 text-center">Terlambat</th>
                         <th class="p-4 text-center">Sakit</th>
                         <th class="p-4 text-center">Izin</th>
@@ -75,26 +147,81 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
-                    @foreach($rekapPegawai as $index => $r)
+                    @foreach($dataLaporan['items'] as $index => $r)
                     <tr class="hover:bg-slate-50 transition">
                         <td class="p-4 text-slate-400 font-mono">{{ $index + 1 }}</td>
-                        <td class="p-4">
-                            <div class="font-bold text-slate-800 text-sm">{{ $r['pegawai']->nama_lengkap }}</div>
-                            <div class="text-[11px] text-slate-500 font-medium">ID Mesin: {{ $r['pegawai']->id_mesin }} | {{ $r['pegawai']->jabatan }}</div>
-                        </td>
-                        <td class="p-4 text-center font-bold text-emerald-700 font-mono text-sm">{{ $r['hadir'] }}</td>
-                        <td class="p-4 text-center font-bold text-red-700 font-mono text-sm">{{ $r['terlambat'] }}</td>
-                        <td class="p-4 text-center font-bold text-amber-700 font-mono text-sm">{{ $r['sakit'] }}</td>
-                        <td class="p-4 text-center font-bold text-blue-700 font-mono text-sm">{{ $r['izin'] }}</td>
-                        <td class="p-4 text-center font-bold text-indigo-700 font-mono text-sm">{{ $r['dispen'] }}</td>
-                        <td class="p-4 text-center font-bold text-slate-600 font-mono text-sm">{{ $r['tidak_hadir'] }}</td>
-                        <td class="p-4 text-center font-bold text-slate-900 font-mono">{{ $r['total_kerja'] }} Hari</td>
+                        <td class="p-4 font-mono font-bold text-slate-700">{{ $r['pegawai']->id_mesin }}</td>
+                        <td class="p-4 font-bold text-slate-800 text-sm">{{ $r['pegawai']->nama_lengkap }}</td>
+                        <td class="p-4 text-slate-600 font-semibold">{{ $r['pegawai']->jabatan }}</td>
+                        <td class="p-4 text-center font-extrabold text-emerald-700 font-mono text-sm">{{ $r['hadir'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-red-700 font-mono text-sm">{{ $r['terlambat'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-amber-700 font-mono text-sm">{{ $r['sakit'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-blue-700 font-mono text-sm">{{ $r['izin'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-indigo-700 font-mono text-sm">{{ $r['dispen'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-slate-600 font-mono text-sm">{{ $r['tidak_hadir'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-slate-900 font-mono">{{ $r['total_kerja'] }} Hari</td>
                     </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
     </div>
+    @else
+    <!-- Mode 2 & 3: Rincian Harian & Individu Table -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <h3 class="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
+                Rincian Log Presensi Harian / Per Aparatur &bull; ({{ \Carbon\Carbon::parse($tanggalMulai)->format('d/m/Y') }} s/d {{ \Carbon\Carbon::parse($tanggalSelesai)->format('d/m/Y') }})
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-200 text-slate-600 uppercase tracking-wider bg-slate-100 font-bold">
+                        <th class="p-4">No</th>
+                        <th class="p-4">Tanggal</th>
+                        <th class="p-4">Nama Aparatur Desa</th>
+                        <th class="p-4">Jabatan</th>
+                        <th class="p-4 text-center">Jam Masuk</th>
+                        <th class="p-4 text-center">Jam Pulang</th>
+                        <th class="p-4 text-center">Status</th>
+                        <th class="p-4">Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    @forelse($dataLaporan['items'] as $index => $row)
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 text-slate-400 font-mono">{{ $index + 1 }}</td>
+                        <td class="p-4 font-mono font-bold text-slate-700">{{ \Carbon\Carbon::parse($row->tanggal)->format('d/m/Y') }}</td>
+                        <td class="p-4 font-bold text-slate-800 text-sm">{{ $row->pegawai->nama_lengkap ?? '-' }}</td>
+                        <td class="p-4 text-slate-600 font-semibold">{{ $row->pegawai->jabatan ?? '-' }}</td>
+                        <td class="p-4 text-center font-mono font-extrabold text-slate-800">{{ $row->jam_masuk ?? '-' }}</td>
+                        <td class="p-4 text-center font-mono font-extrabold text-slate-800">{{ $row->jam_pulang ?? '-' }}</td>
+                        <td class="p-4 text-center">
+                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider
+                                @if($row->status === 'hadir') bg-emerald-100 text-emerald-800 border border-emerald-300
+                                @elseif($row->status === 'terlambat') bg-red-100 text-red-800 border border-red-300
+                                @elseif($row->status === 'sakit') bg-amber-100 text-amber-800 border border-amber-300
+                                @elseif(in_array($row->status, ['izin', 'dispen'])) bg-blue-100 text-blue-800 border border-blue-300
+                                @else bg-slate-100 text-slate-700 border border-slate-300 @endif">
+                                {{ $row->status }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-slate-600">{{ $row->keterangan ?? '-' }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="8" class="p-8 text-center text-slate-400">
+                            Tidak ada record presensi ditemukan sesuai filter yang dipilih.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
 </div>
 @endsection

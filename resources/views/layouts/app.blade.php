@@ -46,17 +46,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col" x-data="{ sidebarOpen: false }">
 
-    <!-- Top Bar Portal -->
-    <div class="bg-slate-950 text-slate-300 text-xs px-4 py-2 flex items-center justify-between border-b border-slate-800/80">
-        <div class="flex items-center space-x-3">
-            <span class="bg-jember-800 text-white font-extrabold px-2.5 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-sm">PORTAL BIOMETRIK OFF-LINE</span>
-            <span class="hidden sm:inline text-slate-400 font-medium">Pemerintah Kabupaten Jember &bull; Kecamatan Balung &bull; Kode Desa: 35.09.10.2005</span>
-        </div>
-        <div class="flex items-center space-x-4">
-            <span class="text-slate-300 font-medium">{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}</span>
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" title="Koneksi Jaringan Lokal OK"></span>
-        </div>
-    </div>
+
 
     <!-- Main Header Banner (Red Pemkab Jember Theme with Official Logo) -->
     <header class="bg-gradient-to-r from-jember-dark via-jember-900 to-jember-800 text-white shadow-lg relative overflow-hidden">
