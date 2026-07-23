@@ -172,6 +172,94 @@
         </div>
     </footer>
 
+    <!-- Global Custom Confirmation Modal (Menggantikan Dialog Bawaan Browser) -->
+    <div x-data="{
+        open: false,
+        title: 'Konfirmasi Tindakan',
+        message: 'Apakah Anda yakin ingin melanjutkan tindakan ini?',
+        confirmText: 'Ya, Lanjutkan',
+        theme: 'danger',
+        targetForm: null,
+        
+        confirmAction(detail) {
+            this.title = detail.title || 'Konfirmasi Tindakan';
+            this.message = detail.message || 'Apakah Anda yakin ingin melanjutkan?';
+            this.confirmText = detail.confirmText || 'Ya, Lanjutkan';
+            this.theme = detail.theme || 'danger';
+            this.targetForm = detail.form;
+            this.open = true;
+        },
+        
+        execute() {
+            if (this.targetForm) {
+                this.targetForm.dataset.confirmed = 'true';
+                this.targetForm.submit();
+            }
+            this.open = false;
+        }
+    }"
+    @trigger-confirm.window="confirmAction($event.detail)"
+    x-show="open"
+    x-cloak
+    class="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 z-[9999] transition-all duration-200">
+
+        <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 transform transition-all scale-100 animate-in fade-in zoom-in duration-200" @click.away="open = false">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner flex-shrink-0"
+                    :class="theme === 'danger' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-amber-100 text-amber-800 border border-amber-200'">
+                    <template x-if="theme === 'danger'">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </template>
+                    <template x-if="theme !== 'danger'">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </template>
+                </div>
+                <div>
+                    <span class="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full"
+                        :class="theme === 'danger' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-amber-100 text-amber-800 border border-amber-200'">KONFIRMASI SISTEM</span>
+                    <h4 class="font-extrabold text-slate-900 text-base mt-1" x-text="title"></h4>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-600 font-medium leading-relaxed mb-6" x-text="message"></p>
+
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button type="button" @click="open = false" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition border border-slate-300">
+                    Batal
+                </button>
+                <button type="button" @click="execute()"
+                    class="px-5 py-2.5 rounded-xl font-extrabold text-xs text-white shadow-md transition flex items-center space-x-2"
+                    :class="theme === 'danger' ? 'bg-red-700 hover:bg-red-800' : 'bg-slate-900 hover:bg-slate-800'">
+                    <span x-text="confirmText"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            const confirmMsg = form.getAttribute('data-confirm') || form.dataset.confirm;
+            
+            if (confirmMsg && !form.dataset.confirmed) {
+                e.preventDefault();
+                const title = form.getAttribute('data-confirm-title') || 'Konfirmasi Tindakan';
+                const btnText = form.getAttribute('data-confirm-btn') || 'Ya, Lanjutkan';
+                const theme = form.getAttribute('data-confirm-theme') || 'danger';
+                
+                window.dispatchEvent(new CustomEvent('trigger-confirm', {
+                    detail: {
+                        title: title,
+                        message: confirmMsg,
+                        form: form,
+                        confirmText: btnText,
+                        theme: theme
+                    }
+                }));
+            }
+        });
+    </script>
+
     @stack('scripts')
 </body>
 </html>

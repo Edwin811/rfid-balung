@@ -64,11 +64,13 @@ class PegawaiController extends Controller
         ]);
 
         $oldData = $pegawai->toArray();
+        $uidKartu = isset($validated['uid_kartu']) && trim($validated['uid_kartu']) !== '' ? trim($validated['uid_kartu']) : null;
+
         $pegawai->update([
             'id_mesin' => $validated['id_mesin'],
             'nama_lengkap' => strtoupper($validated['nama_lengkap']),
             'jabatan' => strtoupper($validated['jabatan']),
-            'uid_kartu' => $validated['uid_kartu'] ?? null,
+            'uid_kartu' => $uidKartu,
             'is_active' => $validated['is_active'],
         ]);
 

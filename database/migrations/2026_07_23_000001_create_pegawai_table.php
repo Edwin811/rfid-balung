@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('nama_lengkap', 100);
             $table->string('jabatan', 100);
             $table->boolean('is_active')->default(true);
+            $table->softDeletes();
             $table->timestamps();
         });
     }

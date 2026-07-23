@@ -28,7 +28,7 @@ class Perizinan extends Model
 
     public function pegawai(): BelongsTo
     {
-        return $this->belongsTo(Pegawai::class, 'pegawai_id');
+        return $this->belongsTo(Pegawai::class, 'pegawai_id')->withTrashed();
     }
 
     public function pembuat(): BelongsTo

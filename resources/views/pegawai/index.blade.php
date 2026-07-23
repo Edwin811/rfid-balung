@@ -25,7 +25,11 @@
             </div>
 
             <div class="flex items-center space-x-3 self-end md:self-auto">
-                <form action="{{ route('pegawai.sync_machine') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengunggah (push) seluruh data nama & nomor kartu RFID di website ke mesin biometrik ZKTeco?')">
+                <form action="{{ route('pegawai.sync_machine') }}" method="POST"
+                    data-confirm="Apakah Anda yakin ingin mengunggah (push) seluruh data nama & nomor kartu RFID di website ke memori fisik mesin biometrik ZKTeco?"
+                    data-confirm-title="Push Data ke Mesin Biometrik"
+                    data-confirm-btn="Ya, Push Sekarang"
+                    data-confirm-theme="warning">
                     @csrf
                     <button type="submit" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow">
                         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
@@ -62,6 +66,7 @@
                         <th class="p-4">Nama Lengkap Aparatur Desa</th>
                         <th class="p-4">Jabatan Official</th>
                         <th class="p-4">UID Kartu RFID (10-Digit)</th>
+                        <th class="p-4">Biometrik Sidik Jari</th>
                         <th class="p-4 text-center">Status</th>
                         <th class="p-4 text-center">Aksi</th>
                     </tr>
@@ -75,6 +80,17 @@
                         <td class="p-4 text-slate-600 font-semibold">{{ $p->jabatan }}</td>
                         <td class="p-4 font-mono font-bold text-emerald-700">
                             {{ $p->uid_kartu ? str_pad($p->uid_kartu, 10, '0', STR_PAD_LEFT) : '-' }}
+                        </td>
+                        <td class="p-4 font-semibold">
+                            @if(in_array((string)$p->id_mesin, ['1', '2']))
+                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <span>👆 1 Jari (Aktif)</span>
+                            </span>
+                            @else
+                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-500 border border-slate-300">
+                                <span>Belum Ada</span>
+                            </span>
+                            @endif
                         </td>
                         <td class="p-4 text-center">
                             @if($p->is_active)
@@ -90,7 +106,11 @@
                                     Edit
                                 </button>
 
-                                <form action="{{ route('pegawai.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus aparatur ini?')">
+                                <form action="{{ route('pegawai.destroy', $p->id) }}" method="POST"
+                                    data-confirm="Apakah Anda yakin ingin menghapus aparatur desa '{{ $p->nama_lengkap }}'? Data presensi historis di masa lalu tetap tersimpan aman 100%."
+                                    data-confirm-title="Hapus Aparatur Desa"
+                                    data-confirm-btn="Ya, Hapus Aparatur"
+                                    data-confirm-theme="danger">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg text-xs transition border border-red-200">
@@ -102,7 +122,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="p-8 text-center text-slate-400">
+                        <td colspan="8" class="p-8 text-center text-slate-400">
                             Belum ada data aparatur desa. Silakan tambahkan data baru.
                         </td>
                     </tr>
@@ -172,6 +192,7 @@
 
             <form :action="'/pegawai/' + editData.id" method="POST" class="space-y-4">
                 @csrf
+                @method('PUT')
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">ID Mesin (User ID ZKTeco)</label>
                     <input type="text" name="id_mesin" x-model="editData.id_mesin" required
