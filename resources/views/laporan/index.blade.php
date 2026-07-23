@@ -120,13 +120,14 @@
         </form>
     </div>
 
-    <!-- Mode 1: Table Rekap Bulanan -->
+    <!-- Mode 1: Table Rekap Bulanan (Kembali ke Tampilan Ringkas Website) -->
     @if($jenisLaporan === 'bulanan')
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-6">
         <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <h3 class="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
                 Rekapitulasi Bulanan Aparatur Desa &bull; {{ \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->locale('id')->isoFormat('MMMM YYYY') }}
             </h3>
+            <span class="text-xs text-slate-500 font-medium">Formulir Rekap Desa Balunglor</span>
         </div>
 
         <div class="overflow-x-auto">

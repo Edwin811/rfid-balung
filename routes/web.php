@@ -35,7 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pegawai', [PegawaiController::class, 'index'])->name('pegawai.index');
     Route::post('/pegawai', [PegawaiController::class, 'store'])->name('pegawai.store');
     Route::post('/pegawai/sync-machine', [PegawaiController::class, 'syncToMachine'])->name('pegawai.sync_machine');
-    Route::post('/pegawai/{id}', [PegawaiController::class, 'update'])->name('pegawai.update');
+    Route::match(['post', 'put'], '/pegawai/{id}', [PegawaiController::class, 'update'])->name('pegawai.update');
     Route::delete('/pegawai/{id}', [PegawaiController::class, 'destroy'])->name('pegawai.destroy');
 
     // Perizinan

@@ -58,9 +58,9 @@ class LaporanController extends Controller
             $pdf = Pdf::loadView('laporan.pdf', compact(
                 'jenisLaporan', 'bulan', 'tahun', 'namaBulan', 'tanggalMulai', 'tanggalSelesai',
                 'selectedPegawai', 'status', 'dataLaporan'
-            ))->setPaper('a4', 'landscape');
+            ))->setPaper('a3', 'landscape');
 
-            return $pdf->download("Laporan_Presensi_{$jenisLaporan}_BalungLor.pdf");
+            return $pdf->download("Laporan_Presensi_Pemkab_{$jenisLaporan}_BalungLor.pdf");
         }
 
         return view('laporan.pdf', compact(
@@ -91,109 +91,100 @@ class LaporanController extends Controller
 
         $fileName = "Laporan_Presensi_{$jenisLaporan}_BalungLor.xls";
 
-        // HTML Excel Spreadsheet Export
+        // HTML Excel Spreadsheet Export (Matriks Pemkab Style)
         $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
         $html .= '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
-        $html .= '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Laporan Presensi</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
         $html .= '<style>';
-        $html .= 'body { font-family: Calibri, Arial, sans-serif; font-size: 12pt; }';
+        $html .= 'body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }';
         $html .= '.header-title { font-size: 16pt; font-weight: bold; text-align: center; color: #9f1239; }';
         $html .= '.header-sub { font-size: 13pt; font-weight: bold; text-align: center; color: #1e293b; }';
-        $html .= '.header-period { font-size: 12pt; text-align: center; font-style: italic; color: #475569; }';
-        $html .= 'table { border-collapse: collapse; width: 100%; font-size: 12pt; }';
-        $html .= 'th { background-color: #9f1239; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #000000; padding: 10px; }';
-        $html .= 'td { border: 1px solid #000000; padding: 8px; vertical-align: middle; }';
-        $html .= '.center { text-align: center; }';
+        $html .= '.header-period { font-size: 11pt; text-align: center; font-style: italic; color: #475569; }';
+        $html .= 'table { border-collapse: collapse; width: 100%; font-size: 10pt; }';
+        $html .= 'th { background-color: #9f1239; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #000000; padding: 6px; }';
+        $html .= 'td { border: 1px solid #000000; padding: 6px; vertical-align: middle; text-align: center; }';
+        $html .= '.left { text-align: left; }';
         $html .= '.bold { font-weight: bold; }';
-        $html .= '.even-row { background-color: #f8fafc; }';
-        $html .= '.odd-row { background-color: #ffffff; }';
-        $html .= '.sig-box { text-align: center; font-weight: bold; font-size: 12pt; }';
+        $html .= '.bg-libur { background-color: #e2e8f0; color: #475569; }';
+        $html .= '.bg-green { background-color: #4ade80; color: #000; }';
+        $html .= '.bg-yellow { background-color: #facc15; color: #000; }';
+        $html .= '.bg-blue { background-color: #38bdf8; color: #000; }';
+        $html .= '.bg-red { background-color: #f87171; color: #000; }';
         $html .= '</style></head><body>';
 
-        // Header Title
+        // Title Header
         $html .= '<table>';
-        $html .= '<tr><td colspan="9" class="header-sub">PEMERINTAH KABUPATEN JEMBER - KECAMATAN BALUNG</td></tr>';
-        $html .= '<tr><td colspan="9" class="header-title">PEMERINTAH DESA BALUNGLOR</td></tr>';
-        $html .= '<tr><td colspan="9" class="header-sub">LAPORAN PRESENSI APARATUR DESA (' . strtoupper($jenisLaporan) . ')</td></tr>';
-        if ($jenisLaporan === 'bulanan') {
-            $html .= '<tr><td colspan="9" class="header-period">PERIODE: ' . strtoupper($namaBulan) . ' ' . $tahun . '</td></tr>';
-        } else {
-            $html .= '<tr><td colspan="9" class="header-period">PERIODE: ' . $tanggalMulai . ' S/D ' . $tanggalSelesai . '</td></tr>';
-        }
-        if ($selectedPegawai) {
-            $html .= '<tr><td colspan="9" class="header-period">APARATUR: ' . strtoupper($selectedPegawai->nama_lengkap) . ' (' . strtoupper($selectedPegawai->jabatan) . ')</td></tr>';
-        }
-        $html .= '<tr><td colspan="9">&nbsp;</td></tr>';
+        $html .= '<tr><td colspan="35" class="header-sub">PEMERINTAH KABUPATEN JEMBER</td></tr>';
+        $html .= '<tr><td colspan="35" class="header-title">PEMERINTAH DESA BALUNGLOR</td></tr>';
+        $html .= '<tr><td colspan="35" class="header-period">BULAN : ' . strtoupper($namaBulan) . ' ' . $tahun . ' | INSTANSI : PEMERINTAH DESA BALUNGLOR</td></tr>';
+        $html .= '<tr><td colspan="35">&nbsp;</td></tr>';
         $html .= '</table>';
 
         if ($jenisLaporan === 'bulanan') {
+            $days = $dataLaporan['days'];
             $html .= '<table><thead><tr>';
-            $html .= '<th style="width:40px;">NO</th>';
-            $html .= '<th style="width:90px;">ID MESIN</th>';
-            $html .= '<th style="width:250px;">NAMA APARATUR DESA</th>';
-            $html .= '<th style="width:180px;">JABATAN</th>';
-            $html .= '<th style="width:80px;">HADIR</th>';
-            $html .= '<th style="width:100px;">TERLAMBAT</th>';
-            $html .= '<th style="width:80px;">SAKIT</th>';
-            $html .= '<th style="width:80px;">IZIN</th>';
-            $html .= '<th style="width:80px;">DISPEN</th>';
-            $html .= '<th style="width:110px;">TIDAK HADIR</th>';
+            $html .= '<th style="width:220px;">Pegawai</th>';
+            foreach ($days as $day) {
+                $html .= '<th>' . $day['day_num'] . '<br><small>' . $day['day_name'] . '</small></th>';
+            }
+            $html .= '<th style="width:100px;">Jumlah Jam</th>';
             $html .= '</tr></thead><tbody>';
 
-            foreach ($dataLaporan['items'] as $index => $item) {
-                $rowClass = ($index % 2 === 0) ? 'even-row' : 'odd-row';
-                $html .= '<tr class="' . $rowClass . '">';
-                $html .= '<td class="center">' . ($index + 1) . '</td>';
-                $html .= '<td class="center font-mono">' . $item['pegawai']->id_mesin . '</td>';
-                $html .= '<td class="bold">' . $item['pegawai']->nama_lengkap . '</td>';
-                $html .= '<td>' . $item['pegawai']->jabatan . '</td>';
-                $html .= '<td class="center bold" style="color:#16a34a;">' . $item['hadir'] . '</td>';
-                $html .= '<td class="center bold" style="color:#dc2626;">' . $item['terlambat'] . '</td>';
-                $html .= '<td class="center bold" style="color:#d97706;">' . $item['sakit'] . '</td>';
-                $html .= '<td class="center bold" style="color:#2563eb;">' . $item['izin'] . '</td>';
-                $html .= '<td class="center bold" style="color:#4f46e5;">' . $item['dispen'] . '</td>';
-                $html .= '<td class="center bold" style="color:#475569;">' . $item['tidak_hadir'] . '</td>';
+            foreach ($dataLaporan['items'] as $item) {
+                $p = $item['pegawai'];
+                $html .= '<tr>';
+                $html .= '<td class="left"><b>' . $p->nama_lengkap . '</b><br><small>ID: ' . $p->id_mesin . ' | ' . $p->jabatan . '</small></td>';
+                
+                foreach ($item['matrix'] as $dayData) {
+                    $bg = 'bg-libur';
+                    if (!$dayData['is_weekend']) {
+                        if ($dayData['record']) {
+                            $st = $dayData['record']->status;
+                            if ($st === 'hadir') $bg = 'bg-green';
+                            elseif ($st === 'terlambat') $bg = 'bg-yellow';
+                            elseif (in_array($st, ['sakit', 'izin', 'dispen'])) $bg = 'bg-blue';
+                            else $bg = 'bg-green';
+                        } else {
+                            $bg = 'bg-red';
+                        }
+                    }
+                    $html .= '<td class="' . $bg . '">';
+                    if ($dayData['is_weekend']) {
+                        $html .= 'Libur';
+                    } elseif ($dayData['record']) {
+                        $rec = $dayData['record'];
+                        $masuk = $rec->jam_masuk ? substr($rec->jam_masuk, 0, 5) : '-';
+                        $pulang = $rec->jam_pulang ? substr($rec->jam_pulang, 0, 5) : '-';
+                        $html .= $masuk . '<br>' . $pulang . '<br><b>' . strtoupper($rec->status) . '</b>';
+                    } else {
+                        $html .= 'TK';
+                    }
+                    $html .= '</td>';
+                }
+
+                $html .= '<td><b>' . $item['total_hours'] . ' jam ' . $item['total_mins'] . ' menit</b></td>';
                 $html .= '</tr>';
             }
             $html .= '</tbody></table>';
-
-        } else { // Harian / Individu
+        } else {
             $html .= '<table><thead><tr>';
-            $html .= '<th style="width:40px;">NO</th>';
-            $html .= '<th style="width:110px;">TANGGAL</th>';
-            $html .= '<th style="width:230px;">NAMA APARATUR</th>';
-            $html .= '<th style="width:180px;">JABATAN</th>';
-            $html .= '<th style="width:90px;">JAM MASUK</th>';
-            $html .= '<th style="width:90px;">JAM PULANG</th>';
-            $html .= '<th style="width:110px;">STATUS</th>';
-            $html .= '<th style="width:200px;">KETERANGAN</th>';
+            $html .= '<th>NO</th><th>TANGGAL</th><th>NAMA APARATUR</th><th>JABATAN</th><th>JAM MASUK</th><th>JAM PULANG</th><th>STATUS</th><th>KETERANGAN</th>';
             $html .= '</tr></thead><tbody>';
-
             foreach ($dataLaporan['items'] as $index => $row) {
-                $rowClass = ($index % 2 === 0) ? 'even-row' : 'odd-row';
-                $html .= '<tr class="' . $rowClass . '">';
-                $html .= '<td class="center">' . ($index + 1) . '</td>';
-                $html .= '<td class="center">' . Carbon::parse($row->tanggal)->format('d/m/Y') . '</td>';
-                $html .= '<td class="bold">' . ($row->pegawai->nama_lengkap ?? '-') . '</td>';
-                $html .= '<td>' . ($row->pegawai->jabatan ?? '-') . '</td>';
-                $html .= '<td class="center bold">' . ($row->jam_masuk ?? '-') . '</td>';
-                $html .= '<td class="center bold">' . ($row->jam_pulang ?? '-') . '</td>';
-                $html .= '<td class="center bold">' . strtoupper($row->status) . '</td>';
-                $html .= '<td>' . ($row->keterangan ?? '-') . '</td>';
+                $html .= '<tr>';
+                $html .= '<td>' . ($index + 1) . '</td>';
+                $html .= '<td>' . Carbon::parse($row->tanggal)->format('d/m/Y') . '</td>';
+                $html .= '<td class="left bold">' . ($row->pegawai->nama_lengkap ?? '-') . '</td>';
+                $html .= '<td class="left">' . ($row->pegawai->jabatan ?? '-') . '</td>';
+                $html .= '<td>' . ($row->jam_masuk ?? '-') . '</td>';
+                $html .= '<td>' . ($row->jam_pulang ?? '-') . '</td>';
+                $html .= '<td class="bold">' . strtoupper($row->status) . '</td>';
+                $html .= '<td class="left">' . ($row->keterangan ?? '-') . '</td>';
                 $html .= '</tr>';
             }
             $html .= '</tbody></table>';
         }
 
-        // Tanda tangan
-        $html .= '<table>';
-        $html .= '<tr><td colspan="9">&nbsp;</td></tr>';
-        $html .= '<tr><td colspan="6"></td><td colspan="3" class="sig-box">Balung Lor, ' . Carbon::now()->locale('id')->isoFormat('D MMMM YYYY') . '</td></tr>';
-        $html .= '<tr><td colspan="6"></td><td colspan="3" class="sig-box">Kepala Desa Balunglor</td></tr>';
-        $html .= '<tr><td colspan="9">&nbsp;</td></tr>';
-        $html .= '<tr><td colspan="9">&nbsp;</td></tr>';
-        $html .= '<tr><td colspan="6"></td><td colspan="3" class="sig-box" style="text-decoration:underline;">IMAM MUSTOFA</td></tr>';
-        $html .= '</table></body></html>';
+        $html .= '</body></html>';
 
         return response($html, 200, [
             'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
@@ -215,42 +206,97 @@ class LaporanController extends Controller
 
             $daysInMonth = Carbon::createFromDate($tahun, $bulan, 1)->daysInMonth;
             $workDaysCount = 0;
+            $days = [];
+            $dayNamesMap = [
+                'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu',
+                'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu', 'Sunday' => 'Minggu'
+            ];
+
             for ($d = 1; $d <= $daysInMonth; $d++) {
-                $date = Carbon::createFromDate($tahun, $bulan, $d);
-                if (!$date->isWeekend()) {
+                $dt = Carbon::createFromDate($tahun, $bulan, $d);
+                if (!$dt->isWeekend()) {
                     $workDaysCount++;
                 }
+                $days[] = [
+                    'day_num' => $d,
+                    'date_str' => $dt->toDateString(),
+                    'day_name' => $dayNamesMap[$dt->format('l')] ?? $dt->format('l'),
+                    'is_weekend' => $dt->isWeekend(),
+                ];
             }
 
             $items = [];
             foreach ($pegawaiList as $pegawai) {
-                $presensi = Presensi::where('pegawai_id', $pegawai->id)
+                $presensiRecords = Presensi::where('pegawai_id', $pegawai->id)
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->get();
+                    ->get()
+                    ->keyBy(function($item) {
+                        return Carbon::parse($item->tanggal)->toDateString();
+                    });
 
-                $hadir = $presensi->where('status', 'hadir')->count();
-                $terlambat = $presensi->where('status', 'terlambat')->count();
-                $sakit = $presensi->where('status', 'sakit')->count();
-                $izin = $presensi->where('status', 'izin')->count();
-                $dispen = $presensi->where('status', 'dispen')->count();
-                $tidakHadir = max(0, $workDaysCount - $presensi->count());
+                $matrix = [];
+                $totalMinutesWorked = 0;
+                $countHadir = 0;
+                $countTerlambat = 0;
+                $countSakit = 0;
+                $countIzin = 0;
+                $countDispen = 0;
+
+                foreach ($days as $day) {
+                    $dateKey = $day['date_str'];
+                    $record = $presensiRecords->get($dateKey);
+
+                    if ($record && $record->jam_masuk && $record->jam_pulang) {
+                        try {
+                            $t1 = Carbon::parse($record->tanggal->format('Y-m-d') . ' ' . $record->jam_masuk);
+                            $t2 = Carbon::parse($record->tanggal->format('Y-m-d') . ' ' . $record->jam_pulang);
+                            if ($t2->gt($t1)) {
+                                $totalMinutesWorked += $t2->diffInMinutes($t1);
+                            }
+                        } catch (\Throwable $e) {}
+                    }
+
+                    if ($record) {
+                        if ($record->status === 'hadir') $countHadir++;
+                        elseif ($record->status === 'terlambat') $countTerlambat++;
+                        elseif ($record->status === 'sakit') $countSakit++;
+                        elseif ($record->status === 'izin') $countIzin++;
+                        elseif ($record->status === 'dispen') $countDispen++;
+                    }
+
+                    $matrix[] = [
+                        'day_num' => $day['day_num'],
+                        'day_name' => $day['day_name'],
+                        'is_weekend' => $day['is_weekend'],
+                        'record' => $record,
+                    ];
+                }
+
+                $totalKehadiranRecorded = $countHadir + $countTerlambat + $countSakit + $countIzin + $countDispen;
+                $countTidakHadir = max(0, $workDaysCount - $totalKehadiranRecorded);
 
                 $items[] = [
                     'pegawai' => $pegawai,
-                    'hadir' => $hadir,
-                    'terlambat' => $terlambat,
-                    'sakit' => $sakit,
-                    'izin' => $izin,
-                    'dispen' => $dispen,
-                    'tidak_hadir' => $tidakHadir,
+                    'matrix' => $matrix,
+                    'hadir' => $countHadir,
+                    'terlambat' => $countTerlambat,
+                    'sakit' => $countSakit,
+                    'izin' => $countIzin,
+                    'dispen' => $countDispen,
+                    'tidak_hadir' => $countTidakHadir,
                     'total_kerja' => $workDaysCount,
+                    'total_hours' => floor($totalMinutesWorked / 60),
+                    'total_mins' => $totalMinutesWorked % 60,
                 ];
             }
 
-            return ['items' => $items];
+            return [
+                'days' => $days,
+                'items' => $items,
+            ];
         } else {
-            // Mode Harian / Rentang / Per Orang
+            // Mode Harian / Rentang / Individu
             $query = Presensi::with('pegawai')
                 ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
                 ->orderBy('tanggal', 'desc')
