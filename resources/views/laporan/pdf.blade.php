@@ -79,8 +79,8 @@
             <p>Balung Lor, {{ \Carbon\Carbon::now()->locale('id')->isoFormat('D MMMM YYYY') }}</p>
             <p><strong>Kepala Desa Balung Lor</strong></p>
             <div class="sig-space"></div>
-            <p><u><strong>BUDI SANTOSO, S.STP</strong></u></p>
-            <p>NIP. 19800512 200501 1 002</p>
+            <p><u><strong>IMAM MUSTOFA</strong></u></p>
+            <p>Kepala Desa Balunglor</p>
         </div>
     </div>
 

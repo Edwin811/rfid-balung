@@ -44,6 +44,18 @@ class DashboardController extends Controller
         $lastLog = DeviceLog::latest('timestamp_absen')->first();
         $isDeviceOnline = $lastLog ? $lastLog->timestamp_absen->gt(now()->subMinutes(10)) : false;
 
+        $presensiTodayList = $presensiToday->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'nama' => $p->pegawai->nama_lengkap ?? '-',
+                'jabatan' => $p->pegawai->jabatan ?? '-',
+                'jam_masuk' => $p->jam_masuk ?? '-',
+                'jam_pulang' => $p->jam_pulang ?? '-',
+                'status' => $p->status,
+                'keterangan' => $p->keterangan ?? '-',
+            ];
+        })->values()->toArray();
+
         return view('dashboard.index', compact(
             'totalPegawai',
             'countHadir',
@@ -53,6 +65,7 @@ class DashboardController extends Controller
             'countDispen',
             'countTidakHadir',
             'presensiToday',
+            'presensiTodayList',
             'unCheckedInPegawai',
             'showLateAlert',
             'chartData',
