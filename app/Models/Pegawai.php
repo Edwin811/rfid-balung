@@ -18,6 +18,7 @@ class Pegawai extends Model
         'uid_kartu',
         'nama_lengkap',
         'jabatan',
+        'status_kepegawaian',
         'is_active',
     ];
 
