@@ -9,6 +9,7 @@ use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PegawaiController;
 
 // Guest Routes
 Route::middleware('guest')->group(function () {
@@ -26,7 +27,16 @@ Route::middleware('auth')->group(function () {
 
     // Presensi
     Route::get('/presensi', [PresensiController::class, 'index'])->name('presensi.index');
+    Route::get('/presensi/sync-now', [PresensiController::class, 'syncNow'])->name('presensi.sync_now');
+    Route::get('/api/presensi/harian-realtime', [PresensiController::class, 'harianRealtimeApi'])->name('presensi.harian_realtime');
     Route::post('/presensi/{id}', [PresensiController::class, 'update'])->name('presensi.update');
+
+    // Kelola Aparatur Desa & RFID
+    Route::get('/pegawai', [PegawaiController::class, 'index'])->name('pegawai.index');
+    Route::post('/pegawai', [PegawaiController::class, 'store'])->name('pegawai.store');
+    Route::post('/pegawai/sync-machine', [PegawaiController::class, 'syncToMachine'])->name('pegawai.sync_machine');
+    Route::post('/pegawai/{id}', [PegawaiController::class, 'update'])->name('pegawai.update');
+    Route::delete('/pegawai/{id}', [PegawaiController::class, 'destroy'])->name('pegawai.destroy');
 
     // Perizinan
     Route::get('/perizinan', [PerizinanController::class, 'index'])->name('perizinan.index');

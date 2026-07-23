@@ -89,4 +89,13 @@ class AdmsController extends Controller
             'processed' => $savedCount,
         ]);
     }
+
+    public function getPegawaiList(): JsonResponse
+    {
+        $pegawai = \App\Models\Pegawai::where('is_active', true)->orderBy('id_mesin')->get();
+        return response()->json([
+            'status' => 'success',
+            'data' => $pegawai,
+        ]);
+    }
 }

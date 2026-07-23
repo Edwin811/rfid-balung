@@ -101,6 +101,11 @@
                     <span>Data Presensi Harian</span>
                 </a>
 
+                <a href="{{ route('pegawai.index') }}" class="px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center space-x-2 {{ request()->routeIs('pegawai.*') ? 'bg-white text-jember-900 font-extrabold shadow-md' : 'text-red-100 hover:bg-red-900/70' }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 012-2h2a2 2 0 012 2v2m-6 0h6"/></svg>
+                    <span>Aparatur Desa & RFID</span>
+                </a>
+
                 <a href="{{ route('perizinan.index') }}" class="px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center space-x-2 {{ request()->routeIs('perizinan.*') ? 'bg-white text-jember-900 font-extrabold shadow-md' : 'text-red-100 hover:bg-red-900/70' }}">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <span>Kelola Perizinan</span>

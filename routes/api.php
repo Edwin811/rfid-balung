@@ -6,3 +6,4 @@ use App\Http\Controllers\Api\AdmsController;
 
 Route::post('/adms/attendance', [AdmsController::class, 'handleAttendance']);
 Route::get('/adms/attendance', [AdmsController::class, 'handshake']);
+Route::get('/adms/pegawai-list', [AdmsController::class, 'getPegawaiList']);

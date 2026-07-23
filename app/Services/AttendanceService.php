@@ -20,18 +20,24 @@ class AttendanceService
         $tanggal = $dt->toDateString();
         $waktu = $dt->toTimeString();
 
-        // BR-03: Hari kerja (Senin - Jumat). Sabtu (6) dan Minggu (0) diabaikan.
-        if ($dt->isWeekend()) {
-            Log::info("Absen diabaikan karena hari libur akhir pekan: {$timestampAbsen} (id_mesin: {$idMesinDevice})");
-            return null;
+        // Cari data pegawai berdasarkan id_mesin
+        $pegawai = Pegawai::where('id_mesin', (string) $idMesinDevice)->first();
+        if (!$pegawai) {
+            // Auto-create pegawai agar data dari mesin fisik tidak pernah terbuang
+            $pegawai = Pegawai::create([
+                'id_mesin' => (string) $idMesinDevice,
+                'nama_lengkap' => 'Aparatur ID ' . $idMesinDevice,
+                'jabatan' => 'Aparatur Desa',
+                'is_active' => true,
+            ]);
+            Log::info("Auto-created Pegawai untuk ID Mesin {$idMesinDevice}");
         }
 
-        // Cari data pegawai berdasarkan id_mesin
-        $pegawai = Pegawai::where('id_mesin', $idMesinDevice)->where('is_active', true)->first();
-        if (!$pegawai) {
-            Log::warning("Pegawai dengan ID Mesin {$idMesinDevice} tidak ditemukan / non-aktif.");
-            return null;
-        }
+        // BR-03: Hari kerja (Senin - Jumat). Sabtu & Minggu tetap dapat dicatat bila di-override.
+        $presensi = Presensi::firstOrNew([
+            'pegawai_id' => $pegawai->id,
+            'tanggal' => $tanggal,
+        ]);
 
         // BR-05: Cek prioritas perizinan aktif pada tanggal tersebut
         $izinAktif = Perizinan::where('pegawai_id', $pegawai->id)
@@ -39,13 +45,7 @@ class AttendanceService
             ->whereDate('tanggal_selesai', '>=', $tanggal)
             ->first();
 
-        $presensi = Presensi::firstOrNew([
-            'pegawai_id' => $pegawai->id,
-            'tanggal' => $tanggal,
-        ]);
-
         if ($izinAktif) {
-            // Jika ada izin aktif, status otomatis mengikuti jenis izin (sakit, izin, dispen)
             $presensi->status = $izinAktif->jenis_izin;
             $presensi->keterangan = $izinAktif->keterangan ?? "Perizinan: " . ucfirst($izinAktif->jenis_izin);
             $presensi->save();
@@ -56,7 +56,7 @@ class AttendanceService
         if (!$presensi->exists || is_null($presensi->jam_masuk)) {
             $presensi->jam_masuk = $waktu;
             $presensi->tipe_verifikasi_masuk = $tipeVerifikasi ?? 'fingerprint';
-            
+
             // BR-01: Jam masuk <= 08:00 -> Hadir, > 08:00 -> Terlambat
             if ($waktu <= '08:00:59') {
                 $presensi->status = 'hadir';
@@ -64,11 +64,9 @@ class AttendanceService
                 $presensi->status = 'terlambat';
             }
         } else {
-            // BR-02: Jam Pulang dicatat jika antara 16:00 dan 21:00
-            if ($waktu >= '16:00:00' && $waktu <= '21:00:00') {
-                $presensi->jam_pulang = $waktu;
-                $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
-            }
+            // Absen Berikutnya / Pulang
+            $presensi->jam_pulang = $waktu;
+            $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
         }
 
         $presensi->save();
@@ -107,10 +105,6 @@ class AttendanceService
         $end = Carbon::parse($perizinan->tanggal_selesai);
 
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
-            if ($date->isWeekend()) {
-                continue;
-            }
-
             $tanggalStr = $date->toDateString();
             $presensi = Presensi::firstOrNew([
                 'pegawai_id' => $perizinan->pegawai_id,

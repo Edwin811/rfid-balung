@@ -3,32 +3,39 @@
 @section('title', 'Data Presensi Harian Aparatur')
 
 @section('content')
-<div x-data="{ editModal: false, selectedRecord: {} }">
+<div x-data="presensiHarian()" x-init="startAutoRefresh()">
 
     <!-- Filter Bar -->
     <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <form action="{{ route('presensi.index') }}" method="GET" class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             <div>
                 <label for="tanggal" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pilih Tanggal</label>
-                <input type="date" id="tanggal" name="tanggal" value="{{ $tanggal }}"
+                <input type="date" id="tanggal" name="tanggal" value="{{ $tanggal }}" x-model="tanggal" @change="fetchData()"
                     class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
             </div>
 
             <div>
                 <label for="search" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Cari Nama / Jabatan</label>
-                <input type="text" id="search" name="search" value="{{ $search }}" placeholder="Nama aparatur desa..."
+                <input type="text" id="search" name="search" value="{{ $search }}" x-model="search" @input.debounce.300ms="fetchData()" placeholder="Nama aparatur desa..."
                     class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
             </div>
 
-            <div class="sm:self-end">
-                <button type="submit" class="px-5 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-sm transition shadow">
-                    Tampilkan Presensi
+            <div class="sm:self-end flex items-center space-x-2">
+                <button type="submit" class="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs transition shadow">
+                    Tampilkan
                 </button>
+                <a href="{{ route('presensi.sync_now') }}" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center space-x-1 transition shadow">
+                    <svg class="w-3.5 h-3.5 animate-spin text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Sync Now</span>
+                </a>
             </div>
         </form>
 
-        <div class="text-xs text-slate-500 text-right">
-            Menampilkan data tanggal: <strong class="text-slate-900 font-bold">{{ \Carbon\Carbon::parse($tanggal)->locale('id')->isoFormat('D MMMM YYYY') }}</strong>
+        <div class="flex items-center space-x-3 text-xs text-slate-500">
+            <div class="flex items-center space-x-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>Auto-Sync Realtime: <strong class="text-slate-800" x-text="lastUpdated">{{ date('H:i:s') }}</strong></span>
+            </div>
         </div>
     </div>
 
@@ -48,44 +55,48 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
-                    @forelse($presensiList as $index => $row)
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-4 text-slate-400 font-mono">{{ $index + 1 }}</td>
-                        <td class="p-4">
-                            <div class="font-bold text-slate-800 text-sm">{{ $row->pegawai->nama_lengkap ?? '-' }}</div>
-                            <div class="text-[11px] text-slate-500 font-medium">ID Mesin: {{ $row->pegawai->id_mesin ?? '-' }} | {{ $row->pegawai->jabatan ?? '-' }}</div>
-                        </td>
-                        <td class="p-4 font-mono font-bold text-slate-700">{{ $row->jam_masuk ?? '-' }}</td>
-                        <td class="p-4 font-mono font-bold text-slate-700">{{ $row->jam_pulang ?? '-' }}</td>
-                        <td class="p-4">
-                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider
-                                @if($row->status === 'hadir') bg-emerald-100 text-emerald-800 border border-emerald-300
-                                @elseif($row->status === 'terlambat') bg-red-100 text-red-800 border border-red-300
-                                @elseif($row->status === 'sakit') bg-amber-100 text-amber-800 border border-amber-300
-                                @elseif(in_array($row->status, ['izin', 'dispen'])) bg-blue-100 text-blue-800 border border-blue-300
-                                @else bg-slate-100 text-slate-700 border border-slate-300 @endif">
-                                {{ $row->status }}
-                            </span>
-                        </td>
-                        <td class="p-4 text-slate-600">{{ $row->keterangan ?? '-' }}</td>
-                        <td class="p-4 text-center">
-                            @if(Auth::user()->hasRole(['admin', 'operator']))
-                            <button @click="editModal = true; selectedRecord = { id: {{ $row->id }}, nama: '{{ addslashes($row->pegawai->nama_lengkap ?? '') }}', status: '{{ $row->status }}', keterangan: '{{ addslashes($row->keterangan ?? '') }}' }"
-                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300">
-                                Edit Status
-                            </button>
-                            @else
-                            <span class="text-slate-300">-</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
+                    <template x-for="(row, idx) in presensiList" :key="row.id">
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-4 text-slate-400 font-mono" x-text="idx + 1"></td>
+                            <td class="p-4">
+                                <div class="font-bold text-slate-800 text-sm" x-text="row.nama"></div>
+                                <div class="text-[11px] text-slate-500 font-medium">ID Mesin: <span x-text="row.id_mesin"></span> | <span x-text="row.jabatan"></span></div>
+                            </td>
+                            <td class="p-4 font-mono font-bold text-slate-700" x-text="row.jam_masuk"></td>
+                            <td class="p-4 font-mono font-bold text-slate-700" x-text="row.jam_pulang"></td>
+                            <td class="p-4">
+                                <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider"
+                                    :class="{
+                                        'bg-emerald-100 text-emerald-800 border border-emerald-300': row.status === 'hadir',
+                                        'bg-red-100 text-red-800 border border-red-300': row.status === 'terlambat',
+                                        'bg-amber-100 text-amber-800 border border-amber-300': row.status === 'sakit',
+                                        'bg-blue-100 text-blue-800 border border-blue-300': row.status === 'izin' || row.status === 'dispen',
+                                        'bg-slate-100 text-slate-700 border border-slate-300': row.status === 'tidak_hadir'
+                                    }"
+                                    x-text="row.status">
+                                </span>
+                            </td>
+                            <td class="p-4 text-slate-600" x-text="row.keterangan"></td>
+                            <td class="p-4 text-center">
+                                @if(Auth::user()->hasRole(['admin', 'operator']))
+                                <button @click="editModal = true; selectedRecord = { id: row.id, nama: row.nama, status: row.status, keterangan: row.keterangan }"
+                                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300">
+                                    Edit Status
+                                </button>
+                                @else
+                                <span class="text-slate-300">-</span>
+                                @endif
+                            </td>
+                        </tr>
+                    </template>
+
+                    @if($presensiList->isEmpty())
+                    <tr x-show="presensiList.length === 0">
                         <td colspan="7" class="p-8 text-center text-slate-400">
                             Tidak ada record presensi ditemukan pada tanggal ini.
                         </td>
                     </tr>
-                    @endforelse
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -135,3 +146,41 @@
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    function presensiHarian() {
+        return {
+            editModal: false,
+            selectedRecord: {},
+            tanggal: '{{ $tanggal }}',
+            search: '{{ $search }}',
+            lastUpdated: '{{ date('H:i:s') }}',
+            presensiList: @json($presensiFormattedList),
+
+            fetchData() {
+                const params = new URLSearchParams({
+                    tanggal: this.tanggal,
+                    search: this.search
+                });
+                fetch('{{ route('presensi.harian_realtime') }}?' + params.toString())
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            this.presensiList = data.data;
+                            this.lastUpdated = data.timestamp;
+                        }
+                    })
+                    .catch(err => console.error('Presensi realtime error:', err));
+            },
+
+            startAutoRefresh() {
+                // Realtime Auto Fetch Every 1.5 Seconds! No manual page refresh needed!
+                setInterval(() => {
+                    this.fetchData();
+                }, 1500);
+            }
+        }
+    }
+</script>
+@endpush

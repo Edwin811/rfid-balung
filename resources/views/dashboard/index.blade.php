@@ -96,9 +96,15 @@
                     <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wide">Presensi Real-Time Aparatur (Hari Ini)</h3>
                     <p class="text-xs text-slate-500">Pembaruan data otomatis setiap 30 detik dari mesin biometrik</p>
                 </div>
-                <div class="flex items-center space-x-2 text-xs font-medium text-slate-600 bg-white px-3 py-1 rounded-lg border border-slate-200">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span>Terakhir Sync: <strong x-text="lastUpdated">{{ date('H:i:s') }}</strong></span>
+                <div class="flex items-center space-x-3">
+                    <a href="{{ route('presensi.sync_now') }}" class="px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-lg text-xs flex items-center space-x-1.5 shadow transition">
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Sync Mesin Sekarang</span>
+                    </a>
+                    <div class="flex items-center space-x-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span>Terakhir Sync: <strong x-text="lastUpdated">{{ date('H:i:s') }}</strong></span>
+                    </div>
                 </div>
             </div>
 
@@ -194,7 +200,7 @@
                             }
                         })
                         .catch(err => console.error('Auto refresh error:', err));
-                }, 30000);
+                }, 1500); // Ultra-fast 1.5-second instant UI refresh
             }
         }
     }

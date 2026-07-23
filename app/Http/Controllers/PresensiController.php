@@ -30,7 +30,21 @@ class PresensiController extends Controller
 
         $presensiList = $query->get();
 
-        return view('presensi.index', compact('tanggal', 'search', 'pegawaiList', 'presensiList'));
+        $presensiFormattedList = $presensiList->map(function ($p, $index) {
+            return [
+                'no' => $index + 1,
+                'id' => $p->id,
+                'nama' => $p->pegawai->nama_lengkap ?? '-',
+                'id_mesin' => $p->pegawai->id_mesin ?? '-',
+                'jabatan' => $p->pegawai->jabatan ?? '-',
+                'jam_masuk' => $p->jam_masuk ?? '-',
+                'jam_pulang' => $p->jam_pulang ?? '-',
+                'status' => $p->status,
+                'keterangan' => $p->keterangan ?? '-',
+            ];
+        })->values()->toArray();
+
+        return view('presensi.index', compact('tanggal', 'search', 'pegawaiList', 'presensiList', 'presensiFormattedList'));
     }
 
     public function update(Request $request, $id)
@@ -56,5 +70,53 @@ class PresensiController extends Controller
         AuditLogger::log('update_presensi', 'Presensi', $presensi->id, $dataLama, $presensi->toArray());
 
         return back()->with('success', 'Data presensi berhasil diperbarui.');
+    }
+
+    public function syncNow()
+    {
+        $pythonScript = base_path('scripts/fetch_presensi.py');
+        $pythonBin = env('PYTHON_BIN', 'python');
+        $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
+        $output = shell_exec($command);
+
+        AuditLogger::log('sync_mesin_manual', null, null, null, ['output' => $output]);
+
+        return back()->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
+    }
+
+    public function harianRealtimeApi(Request $request)
+    {
+        $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
+        $search = $request->input('search');
+
+        $query = Presensi::with('pegawai', 'updatedBy')
+            ->whereDate('tanggal', $tanggal);
+
+        if ($search) {
+            $query->whereHas('pegawai', function ($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('jabatan', 'like', "%{$search}%");
+            });
+        }
+
+        $presensiList = $query->get();
+
+        return response()->json([
+            'status' => 'success',
+            'timestamp' => now()->toTimeString(),
+            'data' => $presensiList->map(function ($p, $index) {
+                return [
+                    'no' => $index + 1,
+                    'id' => $p->id,
+                    'nama' => $p->pegawai->nama_lengkap ?? '-',
+                    'id_mesin' => $p->pegawai->id_mesin ?? '-',
+                    'jabatan' => $p->pegawai->jabatan ?? '-',
+                    'jam_masuk' => $p->jam_masuk ?? '-',
+                    'jam_pulang' => $p->jam_pulang ?? '-',
+                    'status' => $p->status,
+                    'keterangan' => $p->keterangan ?? '-',
+                ];
+            }),
+        ]);
     }
 }
