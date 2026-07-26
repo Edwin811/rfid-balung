@@ -13,6 +13,13 @@ class PresensiController extends Controller
 {
     public function index(Request $request)
     {
+        // Otomatis tarik log presensi terbaru dari mesin jika terhubung
+        try {
+            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+        } catch (\Throwable $e) {
+            // Abai jika mesin offline
+        }
+
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 
@@ -76,18 +83,22 @@ class PresensiController extends Controller
 
     public function syncNow()
     {
-        $pythonScript = base_path('scripts/fetch_presensi.py');
-        $pythonBin = env('PYTHON_BIN', 'python');
-        $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
-        $output = shell_exec($command);
-
-        AuditLogger::log('sync_mesin_manual', null, null, null, ['output' => $output]);
-
-        return back()->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
+        try {
+            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+            return back()->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal menarik data dari mesin: ' . $e->getMessage());
+        }
     }
 
     public function harianRealtimeApi(Request $request)
     {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+        } catch (\Throwable $e) {
+            // ignore if device offline
+        }
+
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 

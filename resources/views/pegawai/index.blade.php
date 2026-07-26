@@ -20,8 +20,8 @@
     <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-6 shadow-sm">
         <div class="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-                <h3 class="font-extrabold text-slate-900 text-lg">Kelola Data Aparatur Desa & Histori Perangkat RFID</h3>
-                <p class="text-xs text-slate-500 font-medium">Ubah nama aparatur, status pensiun/mutasi, ID Mesin, dan nomor kartu RFID. Dilengkapi lacak riwayat kepemilikan perangkat.</p>
+                <h3 class="font-extrabold text-slate-900 text-lg">Kelola Data Aparatur Desa & Histori Perangkat Presensi</h3>
+                <p class="text-xs text-slate-500 font-medium">Ubah nama aparatur, status pensiun/mutasi, ID Mesin, dan nomor kartu RFID.</p>
             </div>
 
             <div class="flex items-center space-x-3 self-end md:self-auto">
@@ -49,19 +49,19 @@
             <button @click="activeTab = 'aktif'"
                 :class="activeTab === 'aktif' ? 'border-red-700 text-red-700 font-extrabold bg-red-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'"
                 class="px-5 py-3 border-b-2 text-xs transition flex items-center space-x-2 rounded-t-xl">
-                <span>🟢 Aparatur Aktif</span>
+                <span>Aparatur Aktif</span>
             </button>
 
             <button @click="activeTab = 'arsip'"
                 :class="activeTab === 'arsip' ? 'border-amber-600 text-amber-700 font-extrabold bg-amber-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'"
                 class="px-5 py-3 border-b-2 text-xs transition flex items-center space-x-2 rounded-t-xl">
-                <span>👴 Arsip Pensiun & Mutasi</span>
+                <span>Arsip Pensiun & Mutasi</span>
             </button>
 
             <button @click="activeTab = 'histori'"
                 :class="activeTab === 'histori' ? 'border-blue-700 text-blue-700 font-extrabold bg-blue-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 font-medium'"
                 class="px-5 py-3 border-b-2 text-xs transition flex items-center space-x-2 rounded-t-xl">
-                <span>📜 Histori Perangkat & Mutasi RFID</span>
+                <span>Histori Perangkat & Mutasi</span>
             </button>
         </div>
 
@@ -87,7 +87,7 @@
                         <th class="p-4">No</th>
                         <th class="p-4">ID Mesin</th>
                         <th class="p-4">Nama Lengkap Aparatur Desa</th>
-                        <th class="p-4">Jabatan Official</th>
+                        <th class="p-4">Jabatan</th>
                         <th class="p-4 text-center">Status Kepegawaian</th>
                         <th class="p-4">UID Kartu RFID (10-Digit)</th>
                         <th class="p-4">Biometrik Sidik Jari</th>
@@ -103,11 +103,11 @@
                         <td class="p-4 text-slate-600 font-semibold">{{ $p->jabatan }}</td>
                         <td class="p-4 text-center">
                             @if($p->status_kepegawaian === 'aktif')
-                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">🟢 Aktif</span>
+                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">Aktif</span>
                             @elseif($p->status_kepegawaian === 'pensiun')
-                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-300">👴 Pensiun</span>
+                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-300">Pensiun</span>
                             @elseif($p->status_kepegawaian === 'mutasi')
-                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-blue-100 text-blue-800 border border-blue-300">🔁 Mutasi</span>
+                            <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-blue-100 text-blue-800 border border-blue-300">Mutasi</span>
                             @else
                             <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-600 border border-slate-300">Non-Aktif</span>
                             @endif
@@ -118,7 +118,7 @@
                         <td class="p-4 font-semibold">
                             @if(in_array((string)$p->id_mesin, ['1', '2']))
                             <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                <span>👆 1 Jari (Aktif)</span>
+                                <span>1 Jari (Aktif)</span>
                             </span>
                             @else
                             <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-500 border border-slate-300">
@@ -137,7 +137,7 @@
                                     data-confirm="Apakah Anda yakin ingin mengarsipkan / me-nonaktifkan aparatur '{{ $p->nama_lengkap }}'? Data presensi historis tetap aman 100%."
                                     data-confirm-title="Arsip Aparatur Desa"
                                     data-confirm-btn="Ya, Arsipkan"
-                                    data-confirm-theme="warning">
+                                    data-confirm-theme="danger">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg text-xs transition border border-red-200">
@@ -167,7 +167,7 @@
     <div x-show="activeTab === 'arsip'" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div class="p-4 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
             <h4 class="font-extrabold text-amber-900 text-xs uppercase tracking-wide">
-                📁 ARSIP PENSIUN, MUTASI, & SOFT-DELETED APARATUR (DATA HISTORIS DISIMPAN 100%)
+                ARSIP PENSIUN, MUTASI, & SOFT-DELETED APARATUR (DATA HISTORIS)
             </h4>
         </div>
 
@@ -245,7 +245,7 @@
     <div x-show="activeTab === 'histori'" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div class="p-4 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
             <h4 class="font-extrabold text-blue-900 text-xs uppercase tracking-wide">
-                📜 HISTORI MUTASI PERANGKAT, PERGANTIAN KARTU RFID & SINKRONISASI MESIN
+                HISTORI MUTASI PERANGKAT, PERGANTIAN KARTU RFID & SINKRONISASI MESIN
             </h4>
         </div>
 
@@ -343,10 +343,10 @@
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Status Kepegawaian</label>
                     <select name="status_kepegawaian" required
                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
-                        <option value="aktif">🟢 Aktif</option>
-                        <option value="pensiun">👴 Pensiun</option>
-                        <option value="mutasi">🔁 Mutasi</option>
-                        <option value="non_aktif">📁 Non-Aktif</option>
+                        <option value="aktif">Aktif</option>
+                        <option value="pensiun">Pensiun</option>
+                        <option value="mutasi">Mutasi</option>
+                        <option value="non_aktif">Non-Aktif</option>
                     </select>
                 </div>
 
@@ -401,10 +401,10 @@
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Status Kepegawaian</label>
                     <select name="status_kepegawaian" x-model="editData.status_kepegawaian" required
                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
-                        <option value="aktif">🟢 Aktif</option>
-                        <option value="pensiun">👴 Pensiun</option>
-                        <option value="mutasi">🔁 Mutasi</option>
-                        <option value="non_aktif">📁 Non-Aktif</option>
+                        <option value="aktif">Aktif</option>
+                        <option value="pensiun">Pensiun</option>
+                        <option value="mutasi">Mutasi</option>
+                        <option value="non_aktif">Non-Aktif</option>
                     </select>
                 </div>
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistem Presensi Desa Balunglor</title>
+    <title>Login - Sistem Informasi Presensi Desa Balunglor</title>
     <!-- Favicon Image logo.png -->
     <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
@@ -40,7 +40,7 @@
                 <img src="{{ asset('logo.png') }}" alt="Logo Desa Balunglor" class="w-full h-full object-contain">
             </div>
             <span class="inline-block bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-[10px] px-3 py-0.5 rounded-full uppercase tracking-widest mb-2 shadow-sm">PPID DESA BALUNGLOR</span>
-            <h1 class="text-xl font-extrabold tracking-tight">Sistem Presensi Biometrik</h1>
+            <h1 class="text-xl font-extrabold tracking-tight">Sistem Informasi Presensi Biometrik & RFID</h1>
             <p class="text-xs text-red-100 font-medium mt-1">Pemerintah Desa Balunglor, Kecamatan Balung, Jember</p>
         </div>
 
@@ -67,9 +67,20 @@
 
                 <div>
                     <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Password</label>
-                    <input type="password" id="password" name="password" required
-                        class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition font-medium"
-                        placeholder="••••••••">
+                    <div class="relative">
+                        <input type="password" id="password" name="password" required
+                            class="w-full px-4 py-3 pr-12 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition font-medium"
+                            placeholder="••••••••">
+                        <button type="button" onclick="togglePasswordVisibility()" aria-label="Lihat password" class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 focus:outline-none transition">
+                            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.007 10.007 0 013.122-.563c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-2.09 3.568M3 3l18 18" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between text-xs">
@@ -81,7 +92,7 @@
 
                 <button type="submit"
                     class="w-full py-3.5 px-4 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl shadow-lg shadow-red-700/25 transition duration-150 text-sm tracking-wide">
-                    MASUK SISTEM
+                    MASUK
                 </button>
             </form>
         </div>
@@ -91,5 +102,22 @@
         </div>
     </div>
 
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
+            const eyeOffIcon = document.getElementById('eye-off-icon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.add('hidden');
+                eyeOffIcon.classList.remove('hidden');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('hidden');
+                eyeOffIcon.classList.add('hidden');
+            }
+        }
+    </script>
 </body>
 </html>

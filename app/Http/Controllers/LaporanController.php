@@ -50,22 +50,27 @@ class LaporanController extends Controller
 
         $selectedPegawai = $pegawaiId ? Pegawai::find($pegawaiId) : null;
 
+        $logoPath = public_path('logo.png');
+        $logoBase64 = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+        $printTimestamp = Carbon::now()->locale('id')->isoFormat('DD/MM/YYYY HH:mm:ss') . ' WIB';
+        $currentDateIndo = Carbon::now()->locale('id')->isoFormat('D MMMM YYYY');
+
         AuditLogger::log('export_pdf_laporan', null, null, null, [
             'jenis' => $jenisLaporan, 'bulan' => $bulan, 'tahun' => $tahun, 'pegawai_id' => $pegawaiId
         ]);
 
-        if (class_exists(Pdf::class)) {
-            $pdf = Pdf::loadView('laporan.pdf', compact(
+        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('laporan.pdf', compact(
                 'jenisLaporan', 'bulan', 'tahun', 'namaBulan', 'tanggalMulai', 'tanggalSelesai',
-                'selectedPegawai', 'status', 'dataLaporan'
+                'selectedPegawai', 'status', 'dataLaporan', 'logoBase64', 'printTimestamp', 'currentDateIndo'
             ))->setPaper('a3', 'landscape');
 
-            return $pdf->download("Laporan_Presensi_Pemkab_{$jenisLaporan}_BalungLor.pdf");
+            return $pdf->stream("Laporan_Presensi_Pemkab_{$jenisLaporan}_BalungLor.pdf");
         }
 
         return view('laporan.pdf', compact(
             'jenisLaporan', 'bulan', 'tahun', 'namaBulan', 'tanggalMulai', 'tanggalSelesai',
-            'selectedPegawai', 'status', 'dataLaporan'
+            'selectedPegawai', 'status', 'dataLaporan', 'logoBase64', 'printTimestamp', 'currentDateIndo'
         ));
     }
 
@@ -84,6 +89,10 @@ class LaporanController extends Controller
             $jenisLaporan, $bulan, $tahun, $tanggalMulai, $tanggalSelesai, $pegawaiId, $status
         );
         $selectedPegawai = $pegawaiId ? Pegawai::find($pegawaiId) : null;
+
+        $logoUrl = asset('logo.png');
+        $printTimestamp = Carbon::now()->locale('id')->isoFormat('DD/MM/YYYY HH:mm:ss') . ' WIB';
+        $currentDateIndo = Carbon::now()->locale('id')->isoFormat('D MMMM YYYY');
 
         AuditLogger::log('export_excel_laporan', null, null, null, [
             'jenis' => $jenisLaporan, 'bulan' => $bulan, 'tahun' => $tahun, 'pegawai_id' => $pegawaiId
@@ -109,14 +118,20 @@ class LaporanController extends Controller
         $html .= '.bg-yellow { background-color: #facc15; color: #000; }';
         $html .= '.bg-blue { background-color: #38bdf8; color: #000; }';
         $html .= '.bg-red { background-color: #f87171; color: #000; }';
+        $html .= '.no-border { border: none !important; }';
         $html .= '</style></head><body>';
 
-        // Title Header
-        $html .= '<table>';
-        $html .= '<tr><td colspan="35" class="header-sub">PEMERINTAH KABUPATEN JEMBER</td></tr>';
-        $html .= '<tr><td colspan="35" class="header-title">PEMERINTAH DESA BALUNGLOR</td></tr>';
-        $html .= '<tr><td colspan="35" class="header-period">BULAN : ' . strtoupper($namaBulan) . ' ' . $tahun . ' | INSTANSI : PEMERINTAH DESA BALUNGLOR</td></tr>';
-        $html .= '<tr><td colspan="35">&nbsp;</td></tr>';
+        // Title Header with Logo Pemkab Jember
+        $html .= '<table style="border:none; margin-bottom: 15px;">';
+        $html .= '<tr>';
+        $html .= '<td style="border:none; width:80px; text-align:center; vertical-align:middle;"><img src="' . $logoUrl . '" width="60" height="60" alt="Logo Pemkab Jember"></td>';
+        $html .= '<td style="border:none; text-align:center; vertical-align:middle;" colspan="33">';
+        $html .= '<div class="header-sub">PEMERINTAH KABUPATEN JEMBER</div>';
+        $html .= '<div class="header-title">PEMERINTAH DESA BALUNGLOR</div>';
+        $html .= '<div class="header-sub" style="font-size:11pt; font-weight:bold;">KECAMATAN BALUNG</div>';
+        $html .= '</td></tr>';
+        $html .= '<tr><td colspan="35" style="border:none;" class="header-period">BULAN : ' . strtoupper($namaBulan) . ' ' . $tahun . ' | INSTANSI : PEMERINTAH DESA BALUNGLOR</td></tr>';
+        $html .= '<tr><td colspan="35" style="border:none;">&nbsp;</td></tr>';
         $html .= '</table>';
 
         if ($jenisLaporan === 'bulanan') {
@@ -133,7 +148,7 @@ class LaporanController extends Controller
                 $p = $item['pegawai'];
                 $html .= '<tr>';
                 $html .= '<td class="left"><b>' . $p->nama_lengkap . '</b><br><small>ID: ' . $p->id_mesin . ' | ' . $p->jabatan . '</small></td>';
-                
+
                 foreach ($item['matrix'] as $dayData) {
                     $bg = 'bg-libur';
                     if (!$dayData['is_weekend']) {
@@ -183,6 +198,23 @@ class LaporanController extends Controller
             }
             $html .= '</tbody></table>';
         }
+
+        // Tanda Tangan & Time Stamp Footer (Excel Format Seperti PDF)
+        $html .= '<br><br>';
+        $html .= '<table style="border:none; width:100%;">';
+        $html .= '<tr>';
+        $html .= '<td colspan="15" style="border:none; text-align:left; vertical-align:top; font-size:9pt; color:#475569;">';
+        $html .= '<b>Dicetak pada:</b> ' . $printTimestamp . '<br>';
+        $html .= '<i>Sistem Informasi Presensi Biometrik & RFID Desa Balunglor</i>';
+        $html .= '</td>';
+        $html .= '<td colspan="20" style="border:none; text-align:center; vertical-align:top; font-size:10pt;">';
+        $html .= 'Balung Lor, ' . $currentDateIndo . '<br>';
+        $html .= '<b>Kepala Desa Balunglor</b><br><br><br><br>';
+        $html .= '<u><b>IMAM MUSTOFA</b></u><br>';
+        $html .= 'Kepala Desa Balunglor';
+        $html .= '</td>';
+        $html .= '</tr>';
+        $html .= '</table>';
 
         $html .= '</body></html>';
 

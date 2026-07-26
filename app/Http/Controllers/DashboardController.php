@@ -13,6 +13,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+        } catch (\Throwable $e) {
+            // ignore if device offline
+        }
+
         $today = Carbon::today()->toDateString();
         $totalPegawai = Pegawai::where('is_active', true)->count();
 
@@ -33,7 +39,18 @@ class DashboardController extends Controller
         $alreadyRecordedPegawaiIds = $presensiToday->pluck('pegawai_id')->toArray();
         $unCheckedInPegawai = Pegawai::where('is_active', true)
             ->whereNotIn('id', $alreadyRecordedPegawaiIds)
+            ->orderBy('id_mesin')
             ->get();
+
+        $unCheckedInList = $unCheckedInPegawai->map(function ($p, $index) {
+            return [
+                'no' => $index + 1,
+                'id' => $p->id,
+                'id_mesin' => $p->id_mesin ?? '-',
+                'nama' => $p->nama_lengkap,
+                'jabatan' => $p->jabatan,
+            ];
+        })->values()->toArray();
 
         $showLateAlert = (now()->format('H:i') >= '08:01') && ($unCheckedInPegawai->count() > 0);
 
@@ -69,6 +86,7 @@ class DashboardController extends Controller
             'presensiToday',
             'presensiTodayList',
             'unCheckedInPegawai',
+            'unCheckedInList',
             'showLateAlert',
             'chartData',
             'isDeviceOnline',
@@ -78,12 +96,34 @@ class DashboardController extends Controller
 
     public function realtimeApi(): JsonResponse
     {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+        } catch (\Throwable $e) {
+            // ignore if device offline
+        }
+
         $today = Carbon::today()->toDateString();
         $totalPegawai = Pegawai::where('is_active', true)->count();
 
         $presensiToday = Presensi::with('pegawai')
             ->whereDate('tanggal', $today)
             ->get();
+
+        $alreadyRecordedPegawaiIds = $presensiToday->pluck('pegawai_id')->toArray();
+        $unCheckedInPegawai = Pegawai::where('is_active', true)
+            ->whereNotIn('id', $alreadyRecordedPegawaiIds)
+            ->orderBy('id_mesin')
+            ->get();
+
+        $unCheckedInList = $unCheckedInPegawai->map(function ($p, $index) {
+            return [
+                'no' => $index + 1,
+                'id' => $p->id,
+                'id_mesin' => $p->id_mesin ?? '-',
+                'nama' => $p->nama_lengkap,
+                'jabatan' => $p->jabatan,
+            ];
+        })->values()->toArray();
 
         $countHadir = $presensiToday->where('status', 'hadir')->count();
         $countTerlambat = $presensiToday->where('status', 'terlambat')->count();
@@ -122,6 +162,7 @@ class DashboardController extends Controller
                     'keterangan' => $p->keterangan ?? '-',
                 ];
             }),
+            'unchecked' => $unCheckedInList,
         ]);
     }
 

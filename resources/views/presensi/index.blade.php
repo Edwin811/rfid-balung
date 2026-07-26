@@ -45,8 +45,10 @@
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-slate-200 text-slate-600 uppercase tracking-wider bg-slate-100 font-bold">
-                        <th class="p-4">No</th>
-                        <th class="p-4">Aparatur Desa</th>
+                        <th class="p-4 w-12 text-center">No</th>
+                        <th class="p-4">ID Mesin</th>
+                        <th class="p-4">Nama Aparatur Desa</th>
+                        <th class="p-4">Jabatan</th>
                         <th class="p-4">Jam Masuk</th>
                         <th class="p-4">Jam Pulang</th>
                         <th class="p-4">Status Kehadiran</th>
@@ -57,17 +59,18 @@
                 <tbody class="divide-y divide-slate-100 font-medium">
                     <template x-for="(row, idx) in presensiList" :key="row.id">
                         <tr class="hover:bg-slate-50 transition">
-                            <td class="p-4 text-slate-400 font-mono" x-text="idx + 1"></td>
+                            <td class="p-4 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
+                            <td class="p-4 font-mono font-bold text-slate-700" x-text="row.id_mesin"></td>
                             <td class="p-4">
-                                <div class="font-bold text-slate-800 text-sm" x-text="row.nama"></div>
-                                <div class="text-[11px] text-slate-500 font-medium">ID Mesin: <span x-text="row.id_mesin"></span> | <span x-text="row.jabatan"></span></div>
+                                <div class="font-bold text-slate-900 text-sm" x-text="row.nama"></div>
                             </td>
+                            <td class="p-4 text-slate-600" x-text="row.jabatan"></td>
                             <td class="p-4">
                                 <div class="font-mono font-bold text-slate-800 text-sm" x-text="row.jam_masuk"></div>
                                 <template x-if="row.jam_masuk && row.jam_masuk !== '-'">
                                     <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-1"
                                         :class="row.tipe_masuk === 'rfid' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
-                                        <span x-text="row.tipe_masuk === 'rfid' ? '💳 RFID' : '👆 Biometrik'"></span>
+                                        <span x-text="row.tipe_masuk === 'rfid' ? 'RFID' : 'Biometrik'"></span>
                                     </span>
                                 </template>
                             </td>
@@ -76,7 +79,7 @@
                                 <template x-if="row.jam_pulang && row.jam_pulang !== '-'">
                                     <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-1"
                                         :class="row.tipe_pulang === 'rfid' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
-                                        <span x-text="row.tipe_pulang === 'rfid' ? '💳 RFID' : '👆 Biometrik'"></span>
+                                        <span x-text="row.tipe_pulang === 'rfid' ? 'RFID' : 'Biometrik'"></span>
                                     </span>
                                 </template>
                             </td>
@@ -108,7 +111,7 @@
 
                     @if($presensiList->isEmpty())
                     <tr x-show="presensiList.length === 0">
-                        <td colspan="7" class="p-8 text-center text-slate-400">
+                        <td colspan="9" class="p-8 text-center text-slate-400">
                             Tidak ada record presensi ditemukan pada tanggal ini.
                         </td>
                     </tr>
@@ -119,7 +122,7 @@
     </div>
 
     <!-- Edit Status Modal -->
-    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999]">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200" @click.away="editModal = false">
             <div class="border-b border-slate-100 pb-3 mb-4">
                 <h3 class="font-bold text-slate-800 text-base">Edit Status Presensi Manual</h3>

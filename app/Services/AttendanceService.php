@@ -69,6 +69,14 @@ class AttendanceService
             $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
         }
 
+        // Always ensure verification type is updated if provided
+        if ($presensi->jam_masuk && $waktu === $presensi->jam_masuk) {
+            $presensi->tipe_verifikasi_masuk = $tipeVerifikasi ?? 'fingerprint';
+        }
+        if ($presensi->jam_pulang && $waktu === $presensi->jam_pulang) {
+            $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+        }
+
         $presensi->save();
         return $presensi;
     }

@@ -30,6 +30,10 @@
         <form action="{{ route('laporan.index') }}" method="GET" class="space-y-4">
             <input type="hidden" name="jenis_laporan" :value="mode">
 
+            <script>
+                window.pegawaiListLaporan = @json($pegawaiList);
+            </script>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <!-- Filter Bulan & Tahun (Bila Mode Bulanan) -->
                 <div x-show="mode === 'bulanan'">
@@ -65,17 +69,89 @@
                         class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
                 </div>
 
-                <!-- Filter Aparatur Desa -->
+                <!-- Filter Aparatur Desa Searchable Dropdown -->
                 <div>
-                    <label for="pegawai_id" class="block text-xs font-bold uppercase text-slate-600 mb-1">Filter Aparatur Desa</label>
-                    <select id="pegawai_id" name="pegawai_id" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
-                        <option value="">-- Semua Aparatur Desa --</option>
-                        @foreach($pegawaiList as $p)
-                        <option value="{{ $p->id }}" {{ $pegawaiId == $p->id ? 'selected' : '' }}>
-                            {{ $p->nama_lengkap }} ({{ $p->jabatan }})
-                        </option>
-                        @endforeach
-                    </select>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Filter Aparatur Desa</label>
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        selectedId: '{{ $pegawaiId ?? '' }}',
+                        items: window.pegawaiListLaporan || [],
+
+                        get selectedLabel() {
+                            if (!this.selectedId) return '-- Semua Aparatur Desa --';
+                            const found = this.items.find(i => i.id == this.selectedId);
+                            return found ? (found.nama_lengkap + ' (' + found.jabatan + ')') : '-- Semua Aparatur Desa --';
+                        },
+
+                        get filteredItems() {
+                            if (!this.search.trim()) return this.items;
+                            const q = this.search.toLowerCase();
+                            return this.items.filter(i =>
+                                (i.nama_lengkap && i.nama_lengkap.toLowerCase().includes(q)) ||
+                                (i.jabatan && i.jabatan.toLowerCase().includes(q))
+                            );
+                        },
+
+                        toggle() {
+                            this.open = !this.open;
+                            if (this.open) {
+                                this.$nextTick(() => {
+                                    if (this.$refs.searchInput) this.$refs.searchInput.focus();
+                                });
+                            }
+                        },
+
+                        select(id) {
+                            this.selectedId = id;
+                            this.open = false;
+                            this.search = '';
+                        }
+                    }" class="relative">
+                        <input type="hidden" name="pegawai_id" :value="selectedId">
+
+                        <!-- Trigger Button -->
+                        <button type="button" @click="toggle()"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 text-left font-medium flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm transition">
+                            <span x-text="selectedLabel" :class="selectedId ? 'text-slate-900 font-bold' : 'text-slate-600'"></span>
+                            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Box (Hidden until clicked) -->
+                        <div x-show="open" @click.away="open = false" x-cloak
+                            class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 p-2 max-h-64 overflow-y-auto">
+                            
+                            <!-- Search Input INSIDE Dropdown -->
+                            <div class="sticky top-0 bg-white pb-2 border-b border-slate-100">
+                                <input type="text" x-ref="searchInput" x-model="search" placeholder="Cari nama / jabatan..."
+                                    class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 font-medium bg-slate-50">
+                            </div>
+
+                            <!-- List Items -->
+                            <div class="divide-y divide-slate-100 mt-1">
+                                <div @click="select('')" class="p-2.5 hover:bg-slate-50 rounded-lg cursor-pointer transition text-xs font-bold text-slate-700">
+                                    -- Semua Aparatur Desa --
+                                </div>
+                                <template x-for="item in filteredItems" :key="item.id">
+                                    <div @click="select(item.id)"
+                                        class="p-2.5 hover:bg-slate-50 rounded-lg cursor-pointer transition text-xs flex items-center justify-between"
+                                        :class="selectedId == item.id ? 'bg-red-50 text-red-900 font-bold' : 'text-slate-800'">
+                                        <div>
+                                            <div class="font-bold" x-text="item.nama_lengkap"></div>
+                                            <div class="text-[11px] text-slate-500 font-normal" x-text="item.jabatan"></div>
+                                        </div>
+                                        <span x-show="selectedId == item.id" class="text-red-700 font-bold text-xs">✓</span>
+                                    </div>
+                                </template>
+
+                                <div x-show="filteredItems.length === 0" class="p-4 text-center text-xs text-slate-400">
+                                    Aparatur tidak ditemukan.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Filter Status Kehadiran (Halaman Harian / Individu) -->

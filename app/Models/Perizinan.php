@@ -18,6 +18,7 @@ class Perizinan extends Model
         'tanggal_mulai',
         'tanggal_selesai',
         'keterangan',
+        'file_surat',
         'dibuat_oleh',
     ];
 

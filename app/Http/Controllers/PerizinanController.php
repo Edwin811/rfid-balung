@@ -37,11 +37,20 @@ class PerizinanController extends Controller
 
         $request->validate([
             'pegawai_id' => ['required', 'exists:pegawai,id'],
-            'jenis_izin' => ['required', 'in:sakit,izin,dispen'],
+            'jenis_izin' => ['required', 'in:sakit,izin,cuti,dispen'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
             'keterangan' => ['nullable', 'string'],
+            'file_surat' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
+
+        $filePath = null;
+        if ($request->hasFile('file_surat')) {
+            $file = $request->file('file_surat');
+            $filename = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
+            $file->move(public_path('uploads/perizinan'), $filename);
+            $filePath = 'uploads/perizinan/' . $filename;
+        }
 
         $perizinan = Perizinan::create([
             'pegawai_id' => $request->input('pegawai_id'),
@@ -49,6 +58,7 @@ class PerizinanController extends Controller
             'tanggal_mulai' => $request->input('tanggal_mulai'),
             'tanggal_selesai' => $request->input('tanggal_selesai'),
             'keterangan' => $request->input('keterangan'),
+            'file_surat' => $filePath,
             'dibuat_oleh' => Auth::id(),
         ]);
 

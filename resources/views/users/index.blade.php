@@ -67,10 +67,14 @@
     </div>
 
     <!-- Modal Tambah User -->
-    <div x-show="addModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div x-show="addModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999]">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200" @click.away="addModal = false">
             <h3 class="font-bold text-slate-800 text-base mb-4">Tambah Akun Pengguna Baru</h3>
-            <form action="{{ route('users.store') }}" method="POST" class="space-y-4">
+            <form action="{{ route('users.store') }}" method="POST"
+                data-confirm="Apakah Anda yakin ingin menambahkan akun pengguna baru ini ke dalam sistem?"
+                data-confirm-title="Tambah Akun Pengguna Baru"
+                data-confirm-btn="Ya, Simpan User"
+                data-confirm-theme="warning" class="space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
@@ -106,10 +110,14 @@
     </div>
 
     <!-- Modal Edit User -->
-    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999]">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200" @click.away="editModal = false">
             <h3 class="font-bold text-slate-800 text-base mb-4">Edit Akun Pengguna</h3>
-            <form :action="'/users/' + selectedUser.id" method="POST" class="space-y-4">
+            <form :action="'/users/' + selectedUser.id" method="POST"
+                data-confirm="Apakah Anda yakin ingin menyimpan perubahan pada akun pengguna ini?"
+                data-confirm-title="Simpan Perubahan User"
+                data-confirm-btn="Ya, Simpan Perubahan"
+                data-confirm-theme="warning" class="space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>

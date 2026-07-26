@@ -91,19 +91,21 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <!-- Real-time Attendance Table (2 Columns) -->
         <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wide">Presensi Real-Time Aparatur (Hari Ini)</h3>
-                    <p class="text-xs text-slate-500">Pembaruan data otomatis setiap 30 detik dari mesin biometrik</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Daftar presensi aparatur desa yang tercatat hari ini</p>
                 </div>
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-2">
+                    <input type="text" x-model="searchAttendance" placeholder="Cari aparatur / jabatan..."
+                        class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-600 bg-white font-medium shadow-sm">
                     <a href="{{ route('presensi.sync_now') }}" class="px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-lg text-xs flex items-center space-x-1.5 shadow transition">
                         <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        <span>Sync Mesin Sekarang</span>
+                        <span>Sync Mesin</span>
                     </a>
-                    <div class="flex items-center space-x-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                    <div class="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span>Terakhir Sync: <strong x-text="lastUpdated">{{ date('H:i:s') }}</strong></span>
+                        <span>Sync: <strong x-text="lastUpdated">{{ date('H:i:s') }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -120,7 +122,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-medium">
-                        <template x-for="row in attendanceList" :key="row.id">
+                        <template x-for="row in filteredAttendance" :key="row.id">
                             <tr class="hover:bg-slate-50 transition">
                                 <td class="p-3">
                                     <div class="font-bold text-slate-800" x-text="row.nama"></div>
@@ -131,7 +133,7 @@
                                     <template x-if="row.jam_masuk && row.jam_masuk !== '-'">
                                         <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5"
                                             :class="row.tipe_masuk === 'rfid' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
-                                            <span x-text="row.tipe_masuk === 'rfid' ? '💳 RFID' : '👆 Biometrik'"></span>
+                                            <span x-text="row.tipe_masuk === 'rfid' ? 'RFID' : 'Biometrik'"></span>
                                         </span>
                                     </template>
                                 </td>
@@ -140,7 +142,7 @@
                                     <template x-if="row.jam_pulang && row.jam_pulang !== '-'">
                                         <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5"
                                             :class="row.tipe_pulang === 'rfid' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
-                                            <span x-text="row.tipe_pulang === 'rfid' ? '💳 RFID' : '👆 Biometrik'"></span>
+                                            <span x-text="row.tipe_pulang === 'rfid' ? 'RFID' : 'Biometrik'"></span>
                                         </span>
                                     </template>
                                 </td>
@@ -160,13 +162,11 @@
                             </tr>
                         </template>
 
-                        @if($presensiToday->isEmpty())
-                        <tr x-show="attendanceList.length === 0">
-                            <td colspan="5" class="p-8 text-center text-slate-400">
-                                Belum ada log presensi masuk yang tercatat pada hari ini.
+                        <tr x-show="filteredAttendance.length === 0">
+                            <td colspan="5" class="p-8 text-center text-slate-400 font-medium">
+                                Tidak ada data presensi yang sesuai pencarian.
                             </td>
                         </tr>
-                        @endif
                     </tbody>
                 </table>
             </div>
@@ -187,6 +187,64 @@
         </div>
     </div>
 
+    <!-- Tabel Aparatur Belum Presensi (Hari Ini) - Card Baru -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wide">Daftar Aparatur Belum Presensi (Hari Ini)</h3>
+                    <span class="px-2 py-0.5 rounded-full bg-slate-700 text-white font-extrabold text-[10px]" x-text="unCheckedList.length"></span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Daftar aparatur yang belum mencatatkan presensi hari ini</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <input type="text" x-model="searchUnchecked" placeholder="Cari nama / jabatan / ID..."
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-600 bg-white font-medium shadow-sm">
+                <div class="hidden sm:flex items-center space-x-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Belum Presensi Hari Ini</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="sticky top-0 bg-slate-100 border-b border-slate-200 text-slate-600 uppercase tracking-wider font-bold z-10">
+                    <tr>
+                        <th class="p-3 w-12 text-center">No</th>
+                        <th class="p-3">ID Mesin</th>
+                        <th class="p-3">Nama Aparatur Desa</th>
+                        <th class="p-3">Jabatan</th>
+                        <th class="p-3 text-center">Status Presensi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    <template x-for="(row, idx) in filteredUnchecked" :key="row.id">
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
+                            <td class="p-3 font-mono font-bold text-slate-700" x-text="row.id_mesin"></td>
+                            <td class="p-3">
+                                <div class="font-bold text-slate-900 text-sm" x-text="row.nama"></div>
+                            </td>
+                            <td class="p-3 text-slate-600" x-text="row.jabatan"></td>
+                            <td class="p-3 text-center">
+                                <span class="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300">
+                                    Belum Absen
+                                </span>
+                            </td>
+                        </tr>
+                    </template>
+
+                    <tr x-show="filteredUnchecked.length === 0">
+                        <td colspan="5" class="p-8 text-center text-slate-500 font-medium bg-slate-50">
+                            Tidak ada aparatur yang sesuai kriteria pencarian / seluruh aparatur telah melakukan presensi.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 @endsection
 
@@ -195,6 +253,8 @@
     function dashboardRealtime() {
         return {
             lastUpdated: '{{ date('H:i:s') }}',
+            searchAttendance: '',
+            searchUnchecked: '',
             counts: {
                 hadir: {{ $countHadir }},
                 terlambat: {{ $countTerlambat }},
@@ -204,6 +264,27 @@
                 tidak_hadir: {{ $countTidakHadir }}
             },
             attendanceList: @json($presensiTodayList),
+            unCheckedList: @json($unCheckedInList),
+
+            get filteredAttendance() {
+                if (!this.searchAttendance.trim()) return this.attendanceList;
+                const q = this.searchAttendance.toLowerCase();
+                return this.attendanceList.filter(item =>
+                    (item.nama && item.nama.toLowerCase().includes(q)) ||
+                    (item.jabatan && item.jabatan.toLowerCase().includes(q))
+                );
+            },
+
+            get filteredUnchecked() {
+                if (!this.searchUnchecked.trim()) return this.unCheckedList;
+                const q = this.searchUnchecked.toLowerCase();
+                return this.unCheckedList.filter(item =>
+                    (item.nama && item.nama.toLowerCase().includes(q)) ||
+                    (item.jabatan && item.jabatan.toLowerCase().includes(q)) ||
+                    (item.id_mesin && String(item.id_mesin).includes(q))
+                );
+            },
+
             startAutoRefresh() {
                 setInterval(() => {
                     fetch('{{ route('dashboard.realtime') }}')
@@ -212,6 +293,7 @@
                             if (data.status === 'success') {
                                 this.counts = data.counts;
                                 this.attendanceList = data.data;
+                                this.unCheckedList = data.unchecked || [];
                                 this.lastUpdated = data.timestamp;
                             }
                         })

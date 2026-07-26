@@ -11,10 +11,11 @@ return new class extends Migration
         Schema::create('perizinan', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pegawai_id')->constrained('pegawai')->cascadeOnDelete();
-            $table->enum('jenis_izin', ['sakit', 'izin', 'dispen']);
+            $table->enum('jenis_izin', ['sakit', 'izin', 'cuti', 'dispen']);
             $table->date('tanggal_mulai');
             $table->date('tanggal_selesai');
             $table->text('keterangan')->nullable();
+            $table->string('file_surat')->nullable();
             $table->foreignId('dibuat_oleh')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
         });
