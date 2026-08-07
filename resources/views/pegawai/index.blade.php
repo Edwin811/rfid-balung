@@ -25,6 +25,18 @@
             </div>
 
             <div class="flex items-center space-x-3 self-end md:self-auto">
+                <form action="{{ route('pegawai.pull_machine') }}" method="POST"
+                    data-confirm="Apakah Anda yakin ingin menarik (pull) seluruh data nama & nomor kartu RFID dari memori mesin biometrik ke website?"
+                    data-confirm-title="Pull Data dari Mesin Biometrik"
+                    data-confirm-btn="Ya, Pull Sekarang"
+                    data-confirm-theme="warning">
+                    @csrf
+                    <button type="submit" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center space-x-2 transition border border-slate-300 shadow-sm">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+                        <span>Pull Data dari Mesin</span>
+                    </button>
+                </form>
+
                 <form action="{{ route('pegawai.sync_machine') }}" method="POST"
                     data-confirm="Apakah Anda yakin ingin mengunggah (push) seluruh data nama & nomor kartu RFID di website ke memori fisik mesin biometrik ZKTeco?"
                     data-confirm-title="Push Data ke Mesin Biometrik"

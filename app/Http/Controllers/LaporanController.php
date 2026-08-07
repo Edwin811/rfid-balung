@@ -21,7 +21,7 @@ class LaporanController extends Controller
         $pegawaiId = $request->input('pegawai_id');
         $status = $request->input('status');
 
-        $pegawaiList = Pegawai::where('is_active', true)->orderBy('id_mesin')->get();
+        $pegawaiList = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')->get();
 
         $dataLaporan = $this->getFilteredReportData(
             $jenisLaporan, $bulan, $tahun, $tanggalMulai, $tanggalSelesai, $pegawaiId, $status
@@ -156,7 +156,7 @@ class LaporanController extends Controller
                             $st = $dayData['record']->status;
                             if ($st === 'hadir') $bg = 'bg-green';
                             elseif ($st === 'terlambat') $bg = 'bg-yellow';
-                            elseif (in_array($st, ['sakit', 'izin', 'dispen'])) $bg = 'bg-blue';
+                            elseif (in_array($st, ['sakit', 'izin', 'dispen', 'skorsing'])) $bg = 'bg-blue';
                             else $bg = 'bg-green';
                         } else {
                             $bg = 'bg-red';
@@ -230,7 +230,7 @@ class LaporanController extends Controller
     private function getFilteredReportData($jenis, $bulan, $tahun, $tglMulai, $tglSelesai, $pegawaiId, $status): array
     {
         if ($jenis === 'bulanan') {
-            $pegawaiQuery = Pegawai::where('is_active', true)->orderBy('id_mesin');
+            $pegawaiQuery = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC');
             if ($pegawaiId) {
                 $pegawaiQuery->where('id', $pegawaiId);
             }
@@ -274,6 +274,7 @@ class LaporanController extends Controller
                 $countSakit = 0;
                 $countIzin = 0;
                 $countDispen = 0;
+                $countSkorsing = 0;
 
                 foreach ($days as $day) {
                     $dateKey = $day['date_str'];
@@ -295,6 +296,7 @@ class LaporanController extends Controller
                         elseif ($record->status === 'sakit') $countSakit++;
                         elseif ($record->status === 'izin') $countIzin++;
                         elseif ($record->status === 'dispen') $countDispen++;
+                        elseif ($record->status === 'skorsing') $countSkorsing++;
                     }
 
                     $matrix[] = [
@@ -305,7 +307,7 @@ class LaporanController extends Controller
                     ];
                 }
 
-                $totalKehadiranRecorded = $countHadir + $countTerlambat + $countSakit + $countIzin + $countDispen;
+                $totalKehadiranRecorded = $countHadir + $countTerlambat + $countSakit + $countIzin + $countDispen + $countSkorsing;
                 $countTidakHadir = max(0, $workDaysCount - $totalKehadiranRecorded);
 
                 $items[] = [
@@ -316,6 +318,7 @@ class LaporanController extends Controller
                     'sakit' => $countSakit,
                     'izin' => $countIzin,
                     'dispen' => $countDispen,
+                    'skorsing' => $countSkorsing,
                     'tidak_hadir' => $countTidakHadir,
                     'total_kerja' => $workDaysCount,
                     'total_hours' => floor($totalMinutesWorked / 60),
@@ -331,8 +334,10 @@ class LaporanController extends Controller
             // Mode Harian / Rentang / Individu
             $query = Presensi::with('pegawai')
                 ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
-                ->orderBy('tanggal', 'desc')
-                ->orderBy('pegawai_id', 'asc');
+                ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+                ->orderBy('presensi.tanggal', 'desc')
+                ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+                ->select('presensi.*');
 
             if ($pegawaiId) {
                 $query->where('pegawai_id', $pegawaiId);
@@ -352,6 +357,7 @@ class LaporanController extends Controller
                     'sakit' => $items->where('status', 'sakit')->count(),
                     'izin' => $items->where('status', 'izin')->count(),
                     'dispen' => $items->where('status', 'dispen')->count(),
+                    'skorsing' => $items->where('status', 'skorsing')->count(),
                     'tidak_hadir' => $items->where('status', 'tidak_hadir')->count(),
                 ]
             ];

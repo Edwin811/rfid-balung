@@ -64,9 +64,11 @@ class AttendanceService
                 $presensi->status = 'terlambat';
             }
         } else {
-            // Absen Berikutnya / Pulang
-            $presensi->jam_pulang = $waktu;
-            $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+            // Absen Pulang: Hanya dicatat jika scan dilakukan pada atau setelah jam 16:00 (sebelum jam 16:00 belum jam pulang)
+            if ($waktu >= '16:00:00') {
+                $presensi->jam_pulang = $waktu;
+                $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+            }
         }
 
         // Always ensure verification type is updated if provided

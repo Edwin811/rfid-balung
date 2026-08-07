@@ -5,6 +5,21 @@
 @section('content')
 <div x-data="dashboardRealtime()" x-init="startAutoRefresh()">
 
+    <!-- Late Notification Toast Banner (Realtime Audio & Visual Popup) -->
+    <template x-if="lateToast">
+        <div class="fixed top-20 right-6 z-[99999] max-w-md w-full bg-red-600 text-white rounded-2xl shadow-2xl p-4 border-2 border-white flex items-start space-x-3 transition-all duration-300">
+            <div class="p-2.5 bg-white/20 rounded-xl shrink-0">
+                <svg class="w-7 h-7 text-amber-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div class="flex-1">
+                <div class="font-extrabold text-xs uppercase tracking-wider text-amber-200">⚠️ PERINGATAN PRESENSI TERLAMBAT</div>
+                <div class="font-bold text-base mt-0.5 text-white" x-text="lateToast.nama"></div>
+                <div class="text-xs text-red-100 font-medium mt-0.5" x-text="lateToast.jabatan + ' • Scan Masuk: ' + lateToast.jam_masuk + ' WIB'"></div>
+            </div>
+            <button @click="lateToast = null" class="text-white/80 hover:text-white font-bold text-sm p-1">✕</button>
+        </div>
+    </template>
+
     <!-- Alert Un-Checked In Employees (> 08:00) -->
     @if($showLateAlert)
     <div class="mb-6 p-4 rounded-xl bg-amber-50 border-l-4 border-amber-500 text-amber-900 shadow-sm flex items-start space-x-3">
@@ -265,6 +280,8 @@
             },
             attendanceList: @json($presensiTodayList),
             unCheckedList: @json($unCheckedInList),
+            lateToast: null,
+            knownLateIds: new Set((@json($presensiTodayList)).filter(i => i.status === 'terlambat').map(i => i.id)),
 
             get filteredAttendance() {
                 if (!this.searchAttendance.trim()) return this.attendanceList;
@@ -285,12 +302,39 @@
                 );
             },
 
+            triggerLateAlert(item) {
+                this.lateToast = item;
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const text = `Peringatan! Aparatur ${item.nama}, ${item.jabatan}, absen terlambat pada pukul ${item.jam_masuk}!`;
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'id-ID';
+                    utterance.rate = 0.95;
+                    window.speechSynthesis.speak(utterance);
+                }
+                setTimeout(() => {
+                    if (this.lateToast && this.lateToast.id === item.id) {
+                        this.lateToast = null;
+                    }
+                }, 8000);
+            },
+
             startAutoRefresh() {
                 setInterval(() => {
                     fetch('{{ route('dashboard.realtime') }}')
                         .then(res => res.json())
                         .then(data => {
                             if (data.status === 'success') {
+                                // Deteksi entri terlambat baru
+                                if (data.data) {
+                                    data.data.forEach(item => {
+                                        if (item.status === 'terlambat' && !this.knownLateIds.has(item.id)) {
+                                            this.knownLateIds.add(item.id);
+                                            this.triggerLateAlert(item);
+                                        }
+                                    });
+                                }
+
                                 this.counts = data.counts;
                                 this.attendanceList = data.data;
                                 this.unCheckedList = data.unchecked || [];

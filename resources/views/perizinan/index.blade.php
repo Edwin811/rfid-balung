@@ -108,6 +108,7 @@
                     <option value="izin">Izin Kepentingan Pribadi</option>
                     <option value="cuti">Cuti (Tahunan / Alasan Penting)</option>
                     <option value="dispen">Dispensasi Tugas Luar</option>
+                    <option value="skorsing">Skorsing / Hukuman Disiplin</option>
                 </select>
             </div>
 
@@ -177,6 +178,7 @@
                                 @if($p->jenis_izin === 'sakit') bg-amber-100 text-amber-800 border border-amber-300
                                 @elseif($p->jenis_izin === 'izin') bg-blue-100 text-blue-800 border border-blue-300
                                 @elseif($p->jenis_izin === 'cuti') bg-emerald-100 text-emerald-800 border border-emerald-300
+                                @elseif($p->jenis_izin === 'skorsing') bg-purple-100 text-purple-800 border border-purple-300
                                 @else bg-indigo-100 text-indigo-800 border border-indigo-300 @endif">
                                 {{ $p->jenis_izin }}
                             </span>

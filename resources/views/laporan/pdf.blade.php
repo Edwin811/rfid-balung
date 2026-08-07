@@ -130,7 +130,7 @@
                             $st = $dayData['record']->status;
                             if ($st === 'hadir') $cellClass = 'cell-green';
                             elseif ($st === 'terlambat') $cellClass = 'cell-yellow';
-                            elseif (in_array($st, ['sakit', 'izin', 'dispen'])) $cellClass = 'cell-blue';
+                            elseif (in_array($st, ['sakit', 'izin', 'dispen', 'skorsing'])) $cellClass = 'cell-blue';
                             else $cellClass = 'cell-green';
                         } else {
                             $cellClass = 'cell-red';
@@ -150,6 +150,7 @@
                             @elseif($rec->status === 'sakit') SK
                             @elseif($rec->status === 'izin') IT
                             @elseif($rec->status === 'dispen') IT
+                            @elseif($rec->status === 'skorsing') SKR
                             @else OK
                             @endif
                         </div>

@@ -25,6 +25,9 @@ class DashboardController extends Controller
         // Ambil data presensi hari ini
         $presensiToday = Presensi::with('pegawai')
             ->whereDate('tanggal', $today)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*')
             ->get();
 
         $countHadir = $presensiToday->where('status', 'hadir')->count();
@@ -39,7 +42,7 @@ class DashboardController extends Controller
         $alreadyRecordedPegawaiIds = $presensiToday->pluck('pegawai_id')->toArray();
         $unCheckedInPegawai = Pegawai::where('is_active', true)
             ->whereNotIn('id', $alreadyRecordedPegawaiIds)
-            ->orderBy('id_mesin')
+            ->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')
             ->get();
 
         $unCheckedInList = $unCheckedInPegawai->map(function ($p, $index) {
@@ -107,12 +110,15 @@ class DashboardController extends Controller
 
         $presensiToday = Presensi::with('pegawai')
             ->whereDate('tanggal', $today)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*')
             ->get();
 
         $alreadyRecordedPegawaiIds = $presensiToday->pluck('pegawai_id')->toArray();
         $unCheckedInPegawai = Pegawai::where('is_active', true)
             ->whereNotIn('id', $alreadyRecordedPegawaiIds)
-            ->orderBy('id_mesin')
+            ->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')
             ->get();
 
         $unCheckedInList = $unCheckedInPegawai->map(function ($p, $index) {

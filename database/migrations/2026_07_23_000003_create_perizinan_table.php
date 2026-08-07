@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('perizinan', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pegawai_id')->constrained('pegawai')->cascadeOnDelete();
-            $table->enum('jenis_izin', ['sakit', 'izin', 'cuti', 'dispen']);
+            $table->enum('jenis_izin', ['sakit', 'izin', 'cuti', 'dispen', 'skorsing']);
             $table->date('tanggal_mulai');
             $table->date('tanggal_selesai');
             $table->text('keterangan')->nullable();

@@ -109,7 +109,7 @@ class BackupController extends Controller
                 'presensi.keterangan'
             )
             ->orderBy('presensi.tanggal', 'desc')
-            ->orderBy('pegawai.id_mesin', 'asc')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
             ->get();
 
         $handle = fopen($filepath, 'w');

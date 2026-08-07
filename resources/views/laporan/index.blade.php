@@ -164,6 +164,7 @@
                         <option value="sakit" {{ $status == 'sakit' ? 'selected' : '' }}>Sakit</option>
                         <option value="izin" {{ $status == 'izin' ? 'selected' : '' }}>Izin</option>
                         <option value="dispen" {{ $status == 'dispen' ? 'selected' : '' }}>Dispensasi</option>
+                        <option value="skorsing" {{ $status == 'skorsing' ? 'selected' : '' }}>Skorsing</option>
                         <option value="tidak_hadir" {{ $status == 'tidak_hadir' ? 'selected' : '' }}>Tidak Hadir</option>
                     </select>
                 </div>
@@ -178,18 +179,23 @@
                     <button type="submit" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow">
                         Terapkan Filter
                     </button>
+                    @if(request()->anyFilled(['bulan', 'tahun', 'tanggal_mulai', 'tanggal_selesai', 'pegawai_id', 'status']))
+                    <a href="{{ route('laporan.index') }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition border border-slate-300">
+                        Reset Filter
+                    </a>
+                    @endif
 
                     <!-- Export Buttons (With All Active Query Parameters) -->
                     <a href="{{ route('laporan.excel', request()->all()) }}"
-                        class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow">
+                        class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center space-x-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <span>Export Excel (.xls)</span>
+                        <span>Export Excel</span>
                     </a>
 
                     <a href="{{ route('laporan.pdf', request()->all()) }}" target="_blank"
-                        class="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition shadow">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                        <span>Export PDF (.pdf)</span>
+                        class="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Cetak PDF</span>
                     </a>
                 </div>
             </div>
@@ -219,6 +225,7 @@
                         <th class="p-4 text-center">Sakit</th>
                         <th class="p-4 text-center">Izin</th>
                         <th class="p-4 text-center">Dispen</th>
+                        <th class="p-4 text-center">Skorsing</th>
                         <th class="p-4 text-center">Tidak Hadir</th>
                         <th class="p-4 text-center">Total Hari Kerja</th>
                     </tr>
@@ -235,6 +242,7 @@
                         <td class="p-4 text-center font-extrabold text-amber-700 font-mono text-sm">{{ $r['sakit'] }}</td>
                         <td class="p-4 text-center font-extrabold text-blue-700 font-mono text-sm">{{ $r['izin'] }}</td>
                         <td class="p-4 text-center font-extrabold text-indigo-700 font-mono text-sm">{{ $r['dispen'] }}</td>
+                        <td class="p-4 text-center font-extrabold text-purple-700 font-mono text-sm">{{ $r['skorsing'] }}</td>
                         <td class="p-4 text-center font-extrabold text-slate-600 font-mono text-sm">{{ $r['tidak_hadir'] }}</td>
                         <td class="p-4 text-center font-extrabold text-slate-900 font-mono">{{ $r['total_kerja'] }} Hari</td>
                     </tr>
@@ -281,6 +289,7 @@
                                 @elseif($row->status === 'terlambat') bg-red-100 text-red-800 border border-red-300
                                 @elseif($row->status === 'sakit') bg-amber-100 text-amber-800 border border-amber-300
                                 @elseif(in_array($row->status, ['izin', 'dispen'])) bg-blue-100 text-blue-800 border border-blue-300
+                                @elseif($row->status === 'skorsing') bg-purple-100 text-purple-800 border border-purple-300
                                 @else bg-slate-100 text-slate-700 border border-slate-300 @endif">
                                 {{ $row->status }}
                             </span>

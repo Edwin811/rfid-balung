@@ -16,7 +16,7 @@ class PegawaiController extends Controller
         $tab = $request->input('tab', 'aktif'); // 'aktif', 'arsip', 'histori'
 
         // 1. Data Aparatur Aktif
-        $query = Pegawai::query()->orderBy('id_mesin', 'asc');
+        $query = Pegawai::query()->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC');
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
@@ -167,6 +167,67 @@ class PegawaiController extends Controller
         AuditLogger::log('sync_users_to_machine', null, null, null, ['output' => $output]);
 
         return back()->with('success', 'Perintah push nama & kartu RFID ke mesin ZKTeco berhasil dijalankan! ' . $output);
+    }
+
+    public function pullFromMachine()
+    {
+        $pythonScript = base_path('scripts/pull_users_from_machine.py');
+        $pythonBin = env('PYTHON_BIN', 'python');
+        $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
+        $rawOutput = shell_exec($command);
+
+        if (!$rawOutput) {
+            return back()->with('error', 'Gagal mengeksekusi script pull data dari mesin.');
+        }
+
+        $result = json_decode($rawOutput, true);
+
+        if (!$result || ($result['status'] ?? '') !== 'success') {
+            return back()->with('error', 'Gagal menarik data dari mesin: ' . ($result['message'] ?? $rawOutput));
+        }
+
+        $users = $result['data'] ?? [];
+        $pulledCount = 0;
+        $updatedCount = 0;
+
+        foreach ($users as $u) {
+            $idMesin = (string) $u['user_id'];
+            $nama = !empty($u['nama']) ? $u['nama'] : "Aparatur ID {$idMesin}";
+            $card = !empty($u['card']) ? (string) $u['card'] : null;
+
+            $pegawai = Pegawai::where('id_mesin', $idMesin)->first();
+
+            if ($pegawai) {
+                $updateData = [];
+                if ($nama && $nama !== "Aparatur ID {$idMesin}" && $pegawai->nama_lengkap !== $nama) {
+                    $updateData['nama_lengkap'] = $nama;
+                }
+                if ($card && $pegawai->uid_kartu !== $card) {
+                    $updateData['uid_kartu'] = $card;
+                }
+                if (!empty($updateData)) {
+                    $pegawai->update($updateData);
+                    $updatedCount++;
+                }
+            } else {
+                Pegawai::create([
+                    'id_mesin' => $idMesin,
+                    'nama_lengkap' => $nama,
+                    'uid_kartu' => $card,
+                    'jabatan' => 'Aparatur Desa',
+                    'is_active' => true,
+                ]);
+                $pulledCount++;
+            }
+        }
+
+        AuditLogger::log('pull_users_from_machine', null, null, null, [
+            'total_from_machine' => count($users),
+            'new_created' => $pulledCount,
+            'updated' => $updatedCount,
+        ]);
+
+        return back()->with('success', "Proses Pull Selesai! Ditemukan " . count($users) . " aparatur di mesin. ({$pulledCount} baru ditambahkan, {$updatedCount} diperbarui)");
     }
 
     private function triggerAutoMachineSync(): void

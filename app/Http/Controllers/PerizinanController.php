@@ -20,7 +20,7 @@ class PerizinanController extends Controller
 
     public function index()
     {
-        $pegawaiList = Pegawai::where('is_active', true)->orderBy('nama_lengkap')->get();
+        $pegawaiList = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')->get();
         $perizinanList = Perizinan::with('pegawai', 'pembuat')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
@@ -37,7 +37,7 @@ class PerizinanController extends Controller
 
         $request->validate([
             'pegawai_id' => ['required', 'exists:pegawai,id'],
-            'jenis_izin' => ['required', 'in:sakit,izin,cuti,dispen'],
+            'jenis_izin' => ['required', 'in:sakit,izin,cuti,dispen,skorsing'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
             'keterangan' => ['nullable', 'string'],

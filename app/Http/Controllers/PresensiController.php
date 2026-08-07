@@ -23,10 +23,13 @@ class PresensiController extends Controller
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 
-        $pegawaiList = Pegawai::where('is_active', true)->orderBy('nama_lengkap')->get();
+        $pegawaiList = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')->get();
 
         $query = Presensi::with('pegawai', 'updatedBy')
-            ->whereDate('tanggal', $tanggal);
+            ->whereDate('tanggal', $tanggal)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*');
 
         if ($search) {
             $query->whereHas('pegawai', function ($q) use ($search) {
@@ -64,7 +67,7 @@ class PresensiController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'in:hadir,terlambat,tidak_hadir,sakit,izin,dispen'],
+            'status' => ['required', 'in:hadir,terlambat,tidak_hadir,sakit,izin,dispen,skorsing'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -103,7 +106,10 @@ class PresensiController extends Controller
         $search = $request->input('search');
 
         $query = Presensi::with('pegawai', 'updatedBy')
-            ->whereDate('tanggal', $tanggal);
+            ->whereDate('tanggal', $tanggal)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*');
 
         if ($search) {
             $query->whereHas('pegawai', function ($q) use ($search) {
