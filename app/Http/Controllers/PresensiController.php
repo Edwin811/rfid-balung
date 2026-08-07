@@ -13,11 +13,14 @@ class PresensiController extends Controller
 {
     public function index(Request $request)
     {
-        // Otomatis tarik log presensi terbaru dari mesin jika terhubung
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // Abai jika mesin offline
+        $lastSync = \Illuminate\Support\Facades\Cache::get('last_rfid_sync_time');
+        if (!$lastSync || (time() - (int)$lastSync) >= 10) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+                \Illuminate\Support\Facades\Cache::put('last_rfid_sync_time', time(), 60);
+            } catch (\Throwable $e) {
+                // ignore if device offline
+            }
         }
 
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
@@ -93,10 +96,14 @@ class PresensiController extends Controller
 
     public function harianRealtimeApi(Request $request)
     {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // ignore if device offline
+        $lastSync = \Illuminate\Support\Facades\Cache::get('last_rfid_sync_time');
+        if (!$lastSync || (time() - (int)$lastSync) >= 10) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+                \Illuminate\Support\Facades\Cache::put('last_rfid_sync_time', time(), 60);
+            } catch (\Throwable $e) {
+                // ignore if device offline
+            }
         }
 
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());

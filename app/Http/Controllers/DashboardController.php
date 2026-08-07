@@ -13,10 +13,14 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // ignore if device offline
+        $lastSync = \Illuminate\Support\Facades\Cache::get('last_rfid_sync_time');
+        if (!$lastSync || (time() - (int)$lastSync) >= 10) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+                \Illuminate\Support\Facades\Cache::put('last_rfid_sync_time', time(), 60);
+            } catch (\Throwable $e) {
+                // ignore if device offline
+            }
         }
 
         $today = Carbon::today()->toDateString();
@@ -96,10 +100,14 @@ class DashboardController extends Controller
 
     public function realtimeApi(): JsonResponse
     {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // ignore if device offline
+        $lastSync = \Illuminate\Support\Facades\Cache::get('last_rfid_sync_time');
+        if (!$lastSync || (time() - (int)$lastSync) >= 10) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+                \Illuminate\Support\Facades\Cache::put('last_rfid_sync_time', time(), 60);
+            } catch (\Throwable $e) {
+                // ignore if device offline
+            }
         }
 
         $today = Carbon::today()->toDateString();

@@ -194,10 +194,9 @@
             },
 
             startAutoRefresh() {
-                // Realtime Auto Fetch Every 1.5 Seconds! No manual page refresh needed!
                 setInterval(() => {
                     this.fetchData();
-                }, 1500);
+                }, 2500);
             }
         }
     }

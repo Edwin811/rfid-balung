@@ -298,7 +298,7 @@
                             }
                         })
                         .catch(err => console.error('Auto refresh error:', err));
-                }, 1500); // Ultra-fast 1.5-second instant UI refresh
+                }, 2500); // Smooth 2.5-second instant UI refresh
             }
         }
     }
