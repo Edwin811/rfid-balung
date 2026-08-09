@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Laporan Presensi Bulanan - Pemkab Jember (Desa Balunglor)</title>
+    <!-- Favicon Image logo.png -->
+    <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
+    <link rel="shortcut icon" href="{{ asset('logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
     <style>
         @page { size: A3 landscape; margin: 10mm 10mm 15mm 10mm; }
         body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 8.5px; color: #000; margin: 0; padding: 5px; background: #fff; }
@@ -12,12 +16,13 @@
         
         .meta-info { width: 100%; margin-bottom: 8px; font-size: 10px; font-weight: bold; font-family: 'Helvetica', 'Arial', sans-serif; }
         
-        table.matrix-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; }
-        table.matrix-table th, table.matrix-table td { border: 1px solid #000; padding: 3px 1px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8px; }
-        table.matrix-table th { background-color: #e2e8f0; color: #000; font-weight: bold; }
+        table.matrix-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; page-break-inside: auto; }
+        table.matrix-table tr { page-break-inside: avoid; page-break-after: auto; }
+        table.matrix-table th, table.matrix-table td { border: 1px solid #000; padding: 6px 2px; text-align: center; vertical-align: middle; word-wrap: normal; word-break: normal; font-size: 8.5px; }
+        table.matrix-table th { background-color: #e2e8f0; color: #000; font-weight: bold; padding: 5px 2px; }
         
-        .cell-time { font-size: 7.5px; font-family: monospace; font-weight: bold; color: #000; line-height: 1.1; }
-        .cell-code { font-size: 8px; font-weight: bold; margin-top: 1px; }
+        .cell-time { font-size: 8px; font-family: monospace; font-weight: bold; color: #000; line-height: 1.15; }
+        .cell-code { font-size: 8.5px; font-weight: bold; margin-top: 2px; }
 
         /* Full Column Cell Background Colors High-Contrast (Pemkab Jember Format) */
         .cell-green { background-color: #4ade80 !important; color: #000; font-weight: bold; } /* Hadir OK */
@@ -26,12 +31,12 @@
         .cell-red { background-color: #f87171 !important; color: #000; font-weight: bold; } /* TK / Tidak Hadir */
         .cell-libur { background-color: #e2e8f0 !important; color: #475569; } /* Libur */
 
-        .pegawai-info { text-align: left; padding-left: 5px; font-size: 8.5px; line-height: 1.2; background-color: #fff !important; }
-        .pegawai-nama { font-weight: bold; color: #000; font-size: 9px; }
-        .pegawai-nip { font-size: 7.5px; color: #475569; }
-        .pegawai-jabatan { font-size: 7.5px; color: #1e293b; font-style: italic; }
+        .pegawai-info { text-align: left; padding: 5px 6px; font-size: 8.5px; line-height: 1.25; background-color: #fff !important; word-wrap: normal !important; word-break: normal !important; overflow: hidden; }
+        .pegawai-nama { font-weight: bold; color: #000; font-size: 9px; word-wrap: normal !important; word-break: normal !important; white-space: normal; }
+        .pegawai-nip { font-size: 8px; color: #475569; }
+        .pegawai-jabatan { font-size: 8px; color: #1e293b; font-style: italic; }
 
-        .legend-box { border: 1px solid #000; padding: 6px 10px; background: #fff; margin-top: 8px; font-size: 8.5px; }
+        .legend-box { border: 1px solid #000; padding: 6px 10px; background: #fff; margin-top: 10px; font-size: 8.5px; page-break-inside: avoid; }
         .legend-item { display: inline-block; margin-right: 15px; margin-bottom: 2px; }
         .legend-color { display: inline-block; width: 12px; height: 12px; border: 1px solid #000; vertical-align: middle; margin-right: 4px; }
 
@@ -102,14 +107,14 @@
     <table class="matrix-table">
         <thead>
             <tr>
-                <th style="width: 160px;">Pegawai</th>
+                <th style="width: 140px;">Pegawai</th>
                 @foreach($dataLaporan['days'] as $day)
-                <th style="width: 28px;">
+                <th style="width: 26px;">
                     {{ $day['day_num'] }}<br>
                     <span style="font-size: 7px; font-weight: normal;">{{ $day['day_name'] }}</span>
                 </th>
                 @endforeach
-                <th style="width: 65px;">Jumlah Jam</th>
+                <th style="width: 55px;">Jumlah Jam</th>
             </tr>
         </thead>
         <tbody>
@@ -125,11 +130,13 @@
                 @foreach($item['matrix'] as $dayData)
                 <?php
                     $cellClass = 'cell-libur';
+                    $isPsw = false;
                     if (!$dayData['is_weekend']) {
                         if ($dayData['record']) {
                             $st = $dayData['record']->status;
-                            if ($st === 'hadir') $cellClass = 'cell-green';
-                            elseif ($st === 'terlambat') $cellClass = 'cell-yellow';
+                            $isPsw = !empty($dayData['record']->jam_pulang) && $dayData['record']->jam_pulang < '16:00:00';
+                            if ($isPsw || $st === 'terlambat') $cellClass = 'cell-yellow';
+                            elseif ($st === 'hadir') $cellClass = 'cell-green';
                             elseif (in_array($st, ['sakit', 'izin', 'dispen', 'skorsing'])) $cellClass = 'cell-blue';
                             else $cellClass = 'cell-green';
                         } else {
@@ -145,8 +152,8 @@
                         <div class="cell-time">{{ $rec->jam_masuk ? substr($rec->jam_masuk, 0, 5) : '-' }}</div>
                         <div class="cell-time">{{ $rec->jam_pulang ? substr($rec->jam_pulang, 0, 5) : '-' }}</div>
                         <div class="cell-code">
-                            @if($rec->status === 'hadir') OK-OK
-                            @elseif($rec->status === 'terlambat') TL1-OK
+                            @if($rec->status === 'hadir') {{ $isPsw ? 'OK-PSW' : 'OK-OK' }}
+                            @elseif($rec->status === 'terlambat') {{ $isPsw ? 'TL1-PSW' : 'TL1-OK' }}
                             @elseif($rec->status === 'sakit') SK
                             @elseif($rec->status === 'izin') IT
                             @elseif($rec->status === 'dispen') IT
@@ -184,7 +191,7 @@
             <tr>
                 <th style="width: 30px;">No</th>
                 <th style="width: 70px;">Tanggal</th>
-                <th style="width: 150px;">Nama Aparatur Desa</th>
+                <th style="width: 140px;">Nama Aparatur Desa</th>
                 <th style="width: 130px;">Jabatan</th>
                 <th style="width: 60px;">Jam Masuk</th>
                 <th style="width: 60px;">Jam Pulang</th>
@@ -216,7 +223,7 @@
     <!-- Signature Section -->
     <div class="footer-sig">
         <div class="sig-box">
-            <p>Balung Lor, {{ $currentDateIndo ?? \Carbon\Carbon::now()->locale('id')->isoFormat('D MMMM YYYY') }}</p>
+            <p>Jember, {{ $currentDateIndo ?? \Carbon\Carbon::now()->locale('id')->isoFormat('D MMMM YYYY') }}</p>
             <p><strong>Kepala Desa Balunglor</strong></p>
             <div class="sig-space"></div>
             <p><u><strong>IMAM MUSTOFA</strong></u></p>

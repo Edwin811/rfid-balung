@@ -159,12 +159,20 @@ class BackupController extends Controller
 
     public function download($filename)
     {
-        $filepath = storage_path('app/backups/' . basename($filename));
-        if (!File::exists($filepath)) {
-            return back()->with('error', 'File backup tidak ditemukan.');
+        // Strict filename regex validation (Hanya izinkan nama file sah beresktensi .sql atau .csv)
+        if (!preg_match('/^[a-zA-Z0-9_\-]+\.(sql|csv)$/i', $filename)) {
+            abort(403, 'Nama atau format file backup tidak valid.');
         }
 
-        return response()->download($filepath);
+        $backupDir = realpath(storage_path('app/backups'));
+        $targetPath = storage_path('app/backups/' . basename($filename));
+        $realPath = realpath($targetPath);
+
+        if (!$realPath || !File::exists($realPath) || strpos($realPath, $backupDir) !== 0) {
+            return back()->with('error', 'File backup tidak ditemukan atau jalur file tidak sah.');
+        }
+
+        return response()->download($realPath);
     }
 
     public function cleanDuplicates()

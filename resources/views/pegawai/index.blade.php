@@ -5,14 +5,29 @@
 @section('content')
 <div x-data="{ addModal: false, editModal: false, editData: {}, activeTab: '{{ $tab }}' }">
 
-    <!-- Flash Alert -->
+    <!-- Flash Alert Success -->
     @if(session('success'))
-    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl mb-6 shadow-sm flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            <span class="text-xs font-bold">{{ session('success') }}</span>
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl mb-6 shadow-sm flex items-center justify-between transition-all duration-300">
+        <div class="flex items-center space-x-3 pr-4">
+            <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="text-xs font-bold leading-relaxed">{{ session('success') }}</span>
         </div>
-        <button onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-800 text-sm font-bold">&times;</button>
+        <button onclick="this.parentElement.remove()" type="button" class="text-emerald-500 hover:text-emerald-800 hover:bg-emerald-100/80 p-1.5 rounded-xl transition flex items-center justify-center shrink-0" title="Tutup Notifikasi">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+    @endif
+
+    <!-- Flash Alert Error -->
+    @if(session('error'))
+    <div class="bg-rose-50 border border-rose-200 text-rose-800 px-5 py-4 rounded-2xl mb-6 shadow-sm flex items-center justify-between transition-all duration-300">
+        <div class="flex items-center space-x-3 pr-4">
+            <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="text-xs font-bold leading-relaxed">{{ session('error') }}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" type="button" class="text-rose-500 hover:text-rose-800 hover:bg-rose-100/80 p-1.5 rounded-xl transition flex items-center justify-center shrink-0" title="Tutup Notifikasi">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
     </div>
     @endif
 
@@ -26,8 +41,8 @@
 
             <div class="flex items-center space-x-3 self-end md:self-auto">
                 <form action="{{ route('pegawai.pull_machine') }}" method="POST"
-                    data-confirm="Apakah Anda yakin ingin menarik (pull) seluruh data nama & nomor kartu RFID dari memori mesin biometrik ke website?"
-                    data-confirm-title="Pull Data dari Mesin Biometrik"
+                    data-confirm="Apakah Anda yakin ingin menarik (pull) & menyinkronkan 1-to-1 data dari mesin biometrik ke website? Data pegawai lama di website yang tidak terdaftar lagi di mesin akan dibersihkan."
+                    data-confirm-title="Pull & Sinkronkan Data dari Mesin"
                     data-confirm-btn="Ya, Pull Sekarang"
                     data-confirm-theme="warning">
                     @csrf
@@ -128,9 +143,9 @@
                             {{ $p->uid_kartu ? str_pad($p->uid_kartu, 10, '0', STR_PAD_LEFT) : '-' }}
                         </td>
                         <td class="p-4 font-semibold">
-                            @if(in_array((string)$p->id_mesin, ['1', '2']))
+                            @if(($p->jumlah_jari ?? 0) > 0)
                             <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                <span>1 Jari (Aktif)</span>
+                                <span>{{ $p->jumlah_jari }} Jari (Aktif)</span>
                             </span>
                             @else
                             <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-500 border border-slate-300">
@@ -144,6 +159,20 @@
                                     class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300">
                                     Edit / Ganti Kartu
                                 </button>
+
+                                @if(in_array(auth()->user()->role, ['admin', 'operator']))
+                                <form action="{{ route('pegawai.delete_fingerprint', $p->id) }}" method="POST"
+                                    data-confirm="Apakah Anda yakin ingin menghapus seluruh template sidik jari biometrik milik aparatur '{{ $p->nama_lengkap }}' (ID Mesin: {{ $p->id_mesin }}) dari mesin fisik ZKTeco?"
+                                    data-confirm-title="Hapus Sidik Jari Biometrik"
+                                    data-confirm-btn="Ya, Hapus Sidik Jari"
+                                    data-confirm-theme="warning">
+                                    @csrf
+                                    <button type="submit" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-lg text-xs transition border border-amber-300 flex items-center space-x-1" title="Hapus Sidik Jari dari Mesin">
+                                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457-.39-2.823-1.07-4"/></svg>
+                                        <span>Hapus Jari</span>
+                                    </button>
+                                </form>
+                                @endif
 
                                 <form action="{{ route('pegawai.destroy', $p->id) }}" method="POST"
                                     data-confirm="Apakah Anda yakin ingin mengarsipkan / me-nonaktifkan aparatur '{{ $p->nama_lengkap }}'? Data presensi historis tetap aman 100%."
@@ -291,6 +320,10 @@
                             <span class="px-2.5 py-1 rounded text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">➕ Registrasi Aparatur</span>
                             @elseif($h->aksi === 'sync_users_to_machine')
                             <span class="px-2.5 py-1 rounded text-[10px] font-black uppercase bg-slate-800 text-white">📡 Push Mesin Biometrik</span>
+                            @elseif($h->aksi === 'pull_users_from_machine')
+                            <span class="px-2.5 py-1 rounded text-[10px] font-black uppercase bg-blue-700 text-white">📥 Pull Mesin Biometrik</span>
+                            @elseif($h->aksi === 'delete_fingerprint')
+                            <span class="px-2.5 py-1 rounded text-[10px] font-black uppercase bg-amber-600 text-white">🖐️ Hapus Sidik Jari</span>
                             @else
                             <span class="px-2.5 py-1 rounded text-[10px] font-black uppercase bg-slate-100 text-slate-700 border border-slate-300">{{ $h->aksi }}</span>
                             @endif
@@ -302,6 +335,9 @@
                             @elseif($h->aksi === 'pensiun_pegawai' || $h->aksi === 'mutasi_pegawai')
                             <div>Aparatur: <strong>{{ $h->data_baru['nama'] ?? '-' }}</strong></div>
                             <div>Status Berubah: <span class="text-slate-500 uppercase">{{ $h->data_lama['status_lama'] ?? '-' }}</span> &rarr; <span class="text-amber-700 uppercase font-bold">{{ $h->data_baru['status_baru'] ?? '-' }}</span></div>
+                            @elseif($h->aksi === 'delete_fingerprint')
+                            <div>Aparatur: <strong>{{ $h->data_baru['nama'] ?? '-' }}</strong> (ID Mesin: {{ $h->data_baru['id_mesin'] ?? '-' }})</div>
+                            <div>Status: <span class="text-amber-700 font-bold">Terhapus {{ $h->data_baru['deleted_count'] ?? 0 }} Template Sidik Jari dari Mesin</span></div>
                             @else
                             <div>{{ json_encode($h->data_baru ?: $h->data_lama) }}</div>
                             @endif

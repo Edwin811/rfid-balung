@@ -53,22 +53,21 @@ class DatabaseSeeder extends Seeder
         }
 
         $aparatur = [
-            ['id_mesin' => '1', 'uid_kartu' => '0008811783', 'nama_lengkap' => 'ADMIN', 'jabatan' => 'ADMINISTRATOR SYSTEM'],
-            ['id_mesin' => '2', 'uid_kartu' => '0002660909', 'nama_lengkap' => 'Edwin', 'jabatan' => 'DEVELOPER SYSTEM'],
-            ['id_mesin' => '3', 'uid_kartu' => '1003', 'nama_lengkap' => 'IMAM MUSTOFA', 'jabatan' => 'KEPALA DESA'],
-            ['id_mesin' => '4', 'uid_kartu' => '1004', 'nama_lengkap' => 'MOH. ANSORI', 'jabatan' => 'SEKRETARIS DESA'],
-            ['id_mesin' => '5', 'uid_kartu' => '1005', 'nama_lengkap' => 'SHOLEH A R', 'jabatan' => 'KASI PEMERINTAHAN'],
-            ['id_mesin' => '6', 'uid_kartu' => '1006', 'nama_lengkap' => 'SITI AMINAH', 'jabatan' => 'KASI KESRA'],
-            ['id_mesin' => '7', 'uid_kartu' => '1007', 'nama_lengkap' => 'KHOIRUL ANAM', 'jabatan' => 'KASI PELAYANAN'],
-            ['id_mesin' => '8', 'uid_kartu' => '1008', 'nama_lengkap' => 'DIAN CANDRA DINATA', 'jabatan' => 'KAUR KEUANGAN'],
-            ['id_mesin' => '9', 'uid_kartu' => '1009', 'nama_lengkap' => 'HUSNAN SUBANDI', 'jabatan' => 'KAUR PERENCANAAN'],
-            ['id_mesin' => '10', 'uid_kartu' => '1010', 'nama_lengkap' => 'SUTOMO', 'jabatan' => 'KAUR TU DAN UMUM'],
-            ['id_mesin' => '11', 'uid_kartu' => '1011', 'nama_lengkap' => 'ASMAD', 'jabatan' => 'KASUN KARANG ANYAR'],
-            ['id_mesin' => '12', 'uid_kartu' => '1012', 'nama_lengkap' => 'NUR ROHMAT', 'jabatan' => 'KASUN KRAJAN'],
-            ['id_mesin' => '13', 'uid_kartu' => '1013', 'nama_lengkap' => 'NURHOLIK', 'jabatan' => 'KASUN KEBONSARI'],
-            ['id_mesin' => '14', 'uid_kartu' => '1014', 'nama_lengkap' => 'SUGENG RAWUH', 'jabatan' => 'KASUN WETAN KALI'],
-            ['id_mesin' => '15', 'uid_kartu' => '1015', 'nama_lengkap' => 'ANANG SETIAWAN', 'jabatan' => 'STAF KAUR KEUANGAN'],
-            ['id_mesin' => '16', 'uid_kartu' => '1016', 'nama_lengkap' => 'ABDUL WAHIT', 'jabatan' => 'OPERATOR DESA'],
+            ['id_mesin' => '1', 'uid_kartu' => '1003', 'nama_lengkap' => 'IMAM MUSTOFA', 'jabatan' => 'KEPALA DESA'],
+            ['id_mesin' => '2', 'uid_kartu' => '1004', 'nama_lengkap' => 'MOH. ANSORI', 'jabatan' => 'SEKRETARIS DESA'],
+            ['id_mesin' => '3', 'uid_kartu' => '1005', 'nama_lengkap' => 'SHOLEH A R', 'jabatan' => 'KASI PEMERINTAHAN'],
+            ['id_mesin' => '4', 'uid_kartu' => '1006', 'nama_lengkap' => 'SITI AMINAH', 'jabatan' => 'KASI KESRA'],
+            ['id_mesin' => '5', 'uid_kartu' => '1007', 'nama_lengkap' => 'KHOIRUL ANAM', 'jabatan' => 'KASI PELAYANAN'],
+            ['id_mesin' => '6', 'uid_kartu' => '0008811783', 'nama_lengkap' => 'DIAN CANDRA DINATA', 'jabatan' => 'KAUR KEUANGAN'],
+            ['id_mesin' => '7', 'uid_kartu' => '0002659221', 'nama_lengkap' => 'HUSNAN SUBANDI', 'jabatan' => 'KAUR PERENCANAAN'],
+            ['id_mesin' => '8', 'uid_kartu' => '0002641926', 'nama_lengkap' => 'SUTOMO', 'jabatan' => 'KAUR TU DAN UMUM'],
+            ['id_mesin' => '9', 'uid_kartu' => '0002681592', 'nama_lengkap' => 'ASMAD', 'jabatan' => 'KASUN KARANG ANYAR'],
+            ['id_mesin' => '10', 'uid_kartu' => '0002893203', 'nama_lengkap' => 'NUR ROHMAT', 'jabatan' => 'KASUN KRAJAN'],
+            ['id_mesin' => '11', 'uid_kartu' => '0002645639', 'nama_lengkap' => 'NURHOLIK', 'jabatan' => 'KASUN KEBONSARI'],
+            ['id_mesin' => '12', 'uid_kartu' => '0002622742', 'nama_lengkap' => 'SUGENG RAWUH', 'jabatan' => 'KASUN WETAN KALI'],
+            ['id_mesin' => '13', 'uid_kartu' => '0002679422', 'nama_lengkap' => 'ANANG SETIAWAN', 'jabatan' => 'STAF KAUR KEUANGAN'],
+            ['id_mesin' => '14', 'uid_kartu' => '0002665748', 'nama_lengkap' => 'ABDUL WAHIT', 'jabatan' => 'OPERATOR DESA'],
+            ['id_mesin' => '15', 'uid_kartu' => '0008811783', 'nama_lengkap' => 'Superadmin', 'jabatan' => 'DEVELOPER SYSTEM'],
         ];
 
         // Bersihkan entri lama agar presisi

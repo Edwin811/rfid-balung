@@ -19,6 +19,14 @@ def pull_users():
         conn.disable_device()
         users = conn.get_users()
 
+        finger_map = {}
+        try:
+            templates = conn.get_templates()
+            for tpl in templates:
+                finger_map[tpl.uid] = finger_map.get(tpl.uid, 0) + 1
+        except Exception:
+            pass
+
         result = []
         for u in users:
             card_val = str(u.card) if u.card and int(u.card) > 0 else ""
@@ -27,6 +35,7 @@ def pull_users():
                 'user_id': str(u.user_id),
                 'nama': u.name.strip() if u.name else f"Aparatur ID {u.user_id}",
                 'card': card_val,
+                'finger_count': finger_map.get(u.uid, 0),
                 'privilege': u.privilege,
             })
 

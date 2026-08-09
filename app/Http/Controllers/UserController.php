@@ -69,4 +69,24 @@ class UserController extends Controller
 
         return back()->with('success', 'Akun pengguna berhasil diperbarui.');
     }
+
+    public function destroy($id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->id === \Illuminate\Support\Facades\Auth::id()) {
+            return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan.');
+        }
+
+        if ($user->isAdmin() && User::where('role', 'admin')->count() <= 1) {
+            return back()->with('error', 'Gagal menghapus! Minimal harus tersisa 1 akun Administrator aktif di sistem.');
+        }
+
+        $oldData = $user->toArray();
+        $user->delete();
+
+        AuditLogger::log('hapus_user', 'User', $id, $oldData, null);
+
+        return back()->with('success', 'Akun pengguna berhasil dihapus dari sistem.');
+    }
 }

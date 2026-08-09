@@ -3,7 +3,7 @@
 @section('title', 'Kelola Perizinan Aparatur Desa')
 
 @section('content')
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div x-data="{ editModal: false, editData: {} }" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <!-- Form Input Perizinan (1 Column) -->
     @if(Auth::user()->hasRole(['admin', 'operator']))
@@ -164,6 +164,9 @@
                         <th class="p-3">Keterangan</th>
                         <th class="p-3">Dokumen Surat</th>
                         <th class="p-3">Audit Input</th>
+                        @if(auth()->user()->isAdmin() || auth()->user()->isOperator())
+                        <th class="p-3 text-center">Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
@@ -202,10 +205,34 @@
                             <div class="font-bold text-slate-700">{{ $p->pembuat->name ?? 'System' }}</div>
                             <div class="text-[10px] text-slate-400 font-mono">{{ $p->created_at->format('d/m/Y H:i') }} WIB</div>
                         </td>
+                        @if(auth()->user()->isAdmin() || auth()->user()->isOperator())
+                        <td class="p-3 text-center">
+                            <div class="flex items-center justify-center space-x-1.5">
+                                <button type="button" @click="editModal = true; editData = { id: {{ $p->id }}, pegawai_id: {{ $p->pegawai_id }}, jenis_izin: '{{ $p->jenis_izin }}', tanggal_mulai: '{{ $p->tanggal_mulai }}', tanggal_selesai: '{{ $p->tanggal_selesai }}', keterangan: '{{ addslashes($p->keterangan ?? '') }}' }"
+                                    class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300 inline-flex items-center space-x-1" title="Edit Perizinan">
+                                    <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    <span>Edit</span>
+                                </button>
+
+                                <form action="{{ route('perizinan.destroy', $p->id) }}" method="POST"
+                                    data-confirm="Apakah Anda yakin ingin menghapus data perizinan {{ strtoupper($p->jenis_izin) }} milik aparatur '{{ $p->pegawai->nama_lengkap ?? 'Aparatur' }}' ({{ \Carbon\Carbon::parse($p->tanggal_mulai)->format('d/m/Y') }} s/d {{ \Carbon\Carbon::parse($p->tanggal_selesai)->format('d/m/Y') }})? Status presensi akan dipulihkan secara otomatis."
+                                    data-confirm-title="Hapus Riwayat Perizinan"
+                                    data-confirm-btn="Ya, Hapus Sekarang"
+                                    data-confirm-theme="danger">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg text-xs transition border border-red-200 inline-flex items-center space-x-1" title="Hapus Riwayat Perizinan">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        <span>Hapus</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                        @endif
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="p-8 text-center text-slate-400">
+                        <td colspan="{{ auth()->user()->isAdmin() || auth()->user()->isOperator() ? 7 : 6 }}" class="p-8 text-center text-slate-400">
                             Belum ada riwayat perizinan tercatat.
                         </td>
                     </tr>
@@ -219,5 +246,78 @@
         </div>
     </div>
 
+</div>
+
+    <!-- Modal Edit Perizinan -->
+    <div x-show="editModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 text-left" @click.away="editModal = false">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <h3 class="font-extrabold text-slate-900 text-base">Edit Data Perizinan</h3>
+                <button type="button" @click="editModal = false" class="text-slate-400 hover:text-slate-700 text-lg font-bold">&times;</button>
+            </div>
+
+            <form :action="'{{ url('/perizinan') }}/' + editData.id" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Aparatur Desa</label>
+                    <select name="pegawai_id" x-model="editData.pegawai_id" required
+                        class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        @foreach($pegawaiList as $peg)
+                        <option value="{{ $peg->id }}">{{ $peg->nama_lengkap }} ({{ $peg->jabatan }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Jenis Perizinan</label>
+                    <select name="jenis_izin" x-model="editData.jenis_izin" required
+                        class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        <option value="sakit">Sakit (Surat Dokter)</option>
+                        <option value="izin">Izin Kepentingan Pribadi</option>
+                        <option value="cuti">Cuti (Tahunan / Alasan Penting)</option>
+                        <option value="dispen">Dispensasi Tugas Luar</option>
+                        <option value="skorsing">Skorsing / Hukuman Disiplin</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Tanggal Mulai</label>
+                        <input type="date" name="tanggal_mulai" x-model="editData.tanggal_mulai" required
+                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Tanggal Selesai</label>
+                        <input type="date" name="tanggal_selesai" x-model="editData.tanggal_selesai" required
+                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Keterangan / Alasan</label>
+                    <textarea name="keterangan" x-model="editData.keterangan" rows="2"
+                        class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Ganti Surat / Bukti (Opsional)</label>
+                    <input type="file" name="file_surat" accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-red-700 file:text-white hover:file:bg-red-800 cursor-pointer">
+                    <p class="text-[10px] text-slate-400 mt-1">Kosongkan jika tidak ingin mengganti file lama.</p>
+                </div>
+
+                <div class="flex items-center space-x-3 pt-3">
+                    <button type="button" @click="editModal = false" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs transition shadow">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @endsection

@@ -20,6 +20,20 @@
         </div>
     </template>
 
+    <!-- Banner Aturan Presensi -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl p-4 mb-5 shadow-sm text-white border border-slate-700/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+            <div>
+                <h4 class="font-extrabold text-sm text-white">Aturan Jam Kerja & Presensi Desa Balunglor</h4>
+                <p class="text-xs text-slate-300 mt-0.5">
+                    <span class="text-emerald-400 font-bold">Scan Masuk:</span> Maks 08:00 WIB (Tepat Waktu) &nbsp;•&nbsp;
+                    <span class="text-blue-300 font-bold">Scan Pulang Reguler:</span> Mulai 16:00 WIB &nbsp;•&nbsp;
+                    <span class="text-amber-300 font-bold">Pulang &lt; 16:00 WIB:</span> Wajib punya Perizinan Resmi di sistem.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Filter Bar -->
     <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <form action="{{ route('presensi.index') }}" method="GET" class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
@@ -138,7 +152,7 @@
     </div>
 
     <!-- Edit Status Modal -->
-    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999]">
+    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200" @click.away="editModal = false">
             <div class="border-b border-slate-100 pb-3 mb-4">
                 <h3 class="font-bold text-slate-800 text-base">Edit Status Presensi Manual</h3>

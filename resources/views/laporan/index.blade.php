@@ -122,7 +122,7 @@
                         <!-- Dropdown Box (Hidden until clicked) -->
                         <div x-show="open" @click.away="open = false" x-cloak
                             class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 p-2 max-h-64 overflow-y-auto">
-                            
+
                             <!-- Search Input INSIDE Dropdown -->
                             <div class="sticky top-0 bg-white pb-2 border-b border-slate-100">
                                 <input type="text" x-ref="searchInput" x-model="search" placeholder="Cari nama / jabatan..."
@@ -209,7 +209,7 @@
             <h3 class="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
                 Rekapitulasi Bulanan Aparatur Desa &bull; {{ \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->locale('id')->isoFormat('MMMM YYYY') }}
             </h3>
-            <span class="text-xs text-slate-500 font-medium">Formulir Rekap Desa Balunglor</span>
+            <span class="text-xs text-slate-500 font-medium"></span>
         </div>
 
         <div class="overflow-x-auto">

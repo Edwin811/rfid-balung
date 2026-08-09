@@ -62,8 +62,8 @@ class PresensiController extends Controller
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        if (!$user->isAdmin() && !$user->isOperator()) {
-            return back()->with('error', 'Hanya Admin dan Operator yang berhak mengubah data presensi.');
+        if (!$user || !($user->isAdmin() || $user->isOperator())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk memperbarui data presensi.');
         }
 
         $request->validate([

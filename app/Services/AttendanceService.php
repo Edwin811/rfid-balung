@@ -64,10 +64,26 @@ class AttendanceService
                 $presensi->status = 'terlambat';
             }
         } else {
-            // Absen Pulang: Hanya dicatat jika scan dilakukan pada atau setelah jam 16:00 (sebelum jam 16:00 belum jam pulang)
+            // Absen Pulang (Scan Kedua atau Lanjutan)
             if ($waktu >= '16:00:00') {
+                // Pulang Reguler (Mulai jam 16:00:00 WIB ke atas)
                 $presensi->jam_pulang = $waktu;
                 $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+            } else {
+                // Scan Sebelum Jam 16:00 WIB:
+                // HANYA dicatat sebagai Jam Pulang jika aparatur SUDAH MEMILIKI PERIZINAN RESMI (Izin/Dispen/Cuti) di sistem
+                $hasLeave = Perizinan::where('pegawai_id', $pegawai->id)
+                    ->whereDate('tanggal_mulai', '<=', $tanggal)
+                    ->whereDate('tanggal_selesai', '>=', $tanggal)
+                    ->exists();
+
+                if ($hasLeave) {
+                    $selisihMenit = Carbon::parse($presensi->jam_masuk)->diffInMinutes(Carbon::parse($waktu));
+                    if ($selisihMenit >= 10) {
+                        $presensi->jam_pulang = $waktu;
+                        $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+                    }
+                }
             }
         }
 
@@ -124,6 +140,32 @@ class AttendanceService
             $presensi->status = $perizinan->jenis_izin;
             $presensi->keterangan = "Perizinan: " . ucfirst($perizinan->jenis_izin) . " (" . ($perizinan->keterangan ?? '-') . ")";
             $presensi->save();
+        }
+    }
+
+    /**
+     * Remove leave and recalculate attendance for a date range when leave is deleted
+     */
+    public function removeLeaveFromAttendance(Perizinan $perizinan): void
+    {
+        $start = Carbon::parse($perizinan->tanggal_mulai);
+        $end = Carbon::parse($perizinan->tanggal_selesai);
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            $tanggalStr = $date->toDateString();
+            $presensi = Presensi::where('pegawai_id', $perizinan->pegawai_id)
+                ->where('tanggal', $tanggalStr)
+                ->first();
+
+            if ($presensi) {
+                if ($presensi->jam_masuk) {
+                    $presensi->status = ($presensi->jam_masuk <= '08:00:59') ? 'hadir' : 'terlambat';
+                    $presensi->keterangan = null;
+                    $presensi->save();
+                } else {
+                    $presensi->delete();
+                }
+            }
         }
     }
 }

@@ -67,7 +67,7 @@
                 <div>
                     <div class="flex items-center space-x-2.5">
                         <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight drop-shadow-sm">Desa Balunglor</h1>
-                        <span class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-widest shadow-sm">PROSENDI 2026</span>
+                        <span class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-widest shadow-sm">PROSENDI UNEJ 2026</span>
                     </div>
                     <p class="text-xs text-red-100 font-medium mt-0.5">Sistem Informasi Presensi Biometrik & RFID Terintegrasi Aparatur Desa</p>
                 </div>
@@ -79,7 +79,7 @@
                     <div class="font-extrabold text-sm text-white leading-tight">{{ Auth::user()->name }}</div>
                     <div class="text-[10px] text-amber-300 font-black uppercase tracking-widest mt-0.5">{{ Auth::user()->role }}</div>
                 </div>
-                
+
                 <button type="button" @click="$dispatch('open-logout-modal')"
                     class="p-2.5 rounded-xl bg-red-800/80 hover:bg-red-700 text-red-100 hover:text-white transition shadow-sm border border-red-600/40" title="Keluar dari Sistem">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -205,7 +205,7 @@
     @trigger-confirm.window="confirmAction($event.detail)"
     x-show="open"
     x-cloak
-    class="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 z-[9999] transition-all duration-200">
+    class="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 z-[999999] transition-all duration-200">
 
         <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 transform transition-all scale-100 animate-in fade-in zoom-in duration-200" @click.away="open = false">
             <div class="flex items-center space-x-3 mb-4">

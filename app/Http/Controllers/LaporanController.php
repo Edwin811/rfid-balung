@@ -208,7 +208,7 @@ class LaporanController extends Controller
         $html .= '<i>Sistem Informasi Presensi Biometrik & RFID Desa Balunglor</i>';
         $html .= '</td>';
         $html .= '<td colspan="20" style="border:none; text-align:center; vertical-align:top; font-size:10pt;">';
-        $html .= 'Balung Lor, ' . $currentDateIndo . '<br>';
+        $html .= 'Jember, ' . $currentDateIndo . '<br>';
         $html .= '<b>Kepala Desa Balunglor</b><br><br><br><br>';
         $html .= '<u><b>IMAM MUSTOFA</b></u><br>';
         $html .= 'Kepala Desa Balunglor';

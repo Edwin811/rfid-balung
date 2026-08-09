@@ -54,10 +54,26 @@
                             {{ $u->last_login_at ? \Carbon\Carbon::parse($u->last_login_at)->diffForHumans() : 'Belum Pernah' }}
                         </td>
                         <td class="p-4 text-center">
-                            <button @click="editModal = true; selectedUser = { id: {{ $u->id }}, name: '{{ addslashes($u->name) }}', username: '{{ addslashes($u->username) }}', email: '{{ addslashes($u->email ?? '') }}', role: '{{ $u->role }}', is_active: {{ $u->is_active ? 1 : 0 }} }"
-                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300">
-                                Edit Akun
-                            </button>
+                            <div class="flex items-center justify-center space-x-2">
+                                <button @click="editModal = true; selectedUser = { id: {{ $u->id }}, name: '{{ addslashes($u->name) }}', username: '{{ addslashes($u->username) }}', email: '{{ addslashes($u->email ?? '') }}', role: '{{ $u->role }}', is_active: {{ $u->is_active ? 1 : 0 }} }"
+                                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300">
+                                    Edit
+                                </button>
+
+                                @if(auth()->id() !== $u->id)
+                                <form action="{{ route('users.destroy', $u->id) }}" method="POST"
+                                    data-confirm="Apakah Anda yakin ingin menghapus akun pengguna '{{ addslashes($u->name) }}' (Username: {{ $u->username }}) dari sistem?"
+                                    data-confirm-title="Hapus Akun Pengguna"
+                                    data-confirm-btn="Ya, Hapus User"
+                                    data-confirm-theme="danger">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg text-xs transition border border-red-200" title="Hapus User">
+                                        Hapus
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @endforeach
@@ -67,7 +83,7 @@
     </div>
 
     <!-- Modal Tambah User -->
-    <div x-show="addModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999]">
+    <div x-show="addModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200" @click.away="addModal = false">
             <h3 class="font-bold text-slate-800 text-base mb-4">Tambah Akun Pengguna Baru</h3>
             <form action="{{ route('users.store') }}" method="POST"
@@ -110,7 +126,7 @@
     </div>
 
     <!-- Modal Edit User -->
-    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999]">
+    <div x-show="editModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200" @click.away="editModal = false">
             <h3 class="font-bold text-slate-800 text-base mb-4">Edit Akun Pengguna</h3>
             <form :action="'/users/' + selectedUser.id" method="POST"

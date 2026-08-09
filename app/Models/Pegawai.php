@@ -16,6 +16,7 @@ class Pegawai extends Model
     protected $fillable = [
         'id_mesin',
         'uid_kartu',
+        'jumlah_jari',
         'nama_lengkap',
         'jabatan',
         'status_kepegawaian',

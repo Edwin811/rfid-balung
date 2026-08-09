@@ -49,7 +49,9 @@ class PegawaiController extends Controller
         $historiQuery = AuditLog::with('user')
             ->whereIn('aksi', [
                 'tambah_pegawai', 'update_pegawai', 'hapus_pegawai', 
-                'sync_users_to_machine', 'ganti_kartu_rfid', 'pensiun_pegawai', 'mutasi_pegawai'
+                'sync_users_to_machine', 'pull_users_from_machine',
+                'ganti_kartu_rfid', 'pensiun_pegawai', 'mutasi_pegawai',
+                'delete_fingerprint'
             ])
             ->orderBy('created_at', 'desc');
 
@@ -189,35 +191,50 @@ class PegawaiController extends Controller
         $users = $result['data'] ?? [];
         $pulledCount = 0;
         $updatedCount = 0;
+        $validMachineIds = [];
 
         foreach ($users as $u) {
             $idMesin = (string) $u['user_id'];
+            $validMachineIds[] = $idMesin;
             $nama = !empty($u['nama']) ? $u['nama'] : "Aparatur ID {$idMesin}";
             $card = !empty($u['card']) ? (string) $u['card'] : null;
+            $jumlahJari = intval($u['finger_count'] ?? 0);
 
-            $pegawai = Pegawai::where('id_mesin', $idMesin)->first();
+            $pegawai = Pegawai::withTrashed()->where('id_mesin', $idMesin)->first();
 
             if ($pegawai) {
-                $updateData = [];
-                if ($nama && $nama !== "Aparatur ID {$idMesin}" && $pegawai->nama_lengkap !== $nama) {
-                    $updateData['nama_lengkap'] = $nama;
+                if ($pegawai->trashed()) {
+                    $pegawai->restore();
                 }
-                if ($card && $pegawai->uid_kartu !== $card) {
-                    $updateData['uid_kartu'] = $card;
-                }
-                if (!empty($updateData)) {
-                    $pegawai->update($updateData);
-                    $updatedCount++;
-                }
+                $pegawai->update([
+                    'nama_lengkap' => $nama,
+                    'uid_kartu' => $card,
+                    'jumlah_jari' => $jumlahJari,
+                    'is_active' => true,
+                    'status_kepegawaian' => 'aktif',
+                ]);
+                $updatedCount++;
             } else {
                 Pegawai::create([
                     'id_mesin' => $idMesin,
                     'nama_lengkap' => $nama,
                     'uid_kartu' => $card,
+                    'jumlah_jari' => $jumlahJari,
                     'jabatan' => 'Aparatur Desa',
+                    'status_kepegawaian' => 'aktif',
                     'is_active' => true,
                 ]);
                 $pulledCount++;
+            }
+        }
+
+        // Hapus permanen data pegawai di website yang ID Mesin-nya tidak terdaftar di mesin fisik
+        $deletedCount = 0;
+        if (!empty($validMachineIds)) {
+            $obsoletePegawai = Pegawai::withTrashed()->whereNotIn('id_mesin', $validMachineIds)->get();
+            $deletedCount = $obsoletePegawai->count();
+            foreach ($obsoletePegawai as $obsolete) {
+                $obsolete->forceDelete();
             }
         }
 
@@ -225,9 +242,41 @@ class PegawaiController extends Controller
             'total_from_machine' => count($users),
             'new_created' => $pulledCount,
             'updated' => $updatedCount,
+            'deleted_permanent' => $deletedCount,
         ]);
 
-        return back()->with('success', "Proses Pull Selesai! Ditemukan " . count($users) . " aparatur di mesin. ({$pulledCount} baru ditambahkan, {$updatedCount} diperbarui)");
+        return back()->with('success', "Proses Pull & Sinkronisasi Selesai! Data website 100% disesuaikan dengan mesin. (" . count($users) . " aparatur di mesin, {$pulledCount} baru ditambahkan, {$updatedCount} diperbarui, {$deletedCount} data lama dibersihkan permanen)");
+    }
+
+    public function deleteFingerprint(Request $request, $id)
+    {
+        $pegawai = Pegawai::withTrashed()->findOrFail($id);
+
+        $pythonScript = base_path('scripts/delete_fingerprint.py');
+        $pythonBin = env('PYTHON_BIN', 'python');
+        $command = escapeshellcmd("{$pythonBin} {$pythonScript} {$pegawai->id_mesin}") . " 2>&1";
+        $rawOutput = shell_exec($command);
+
+        if (!$rawOutput) {
+            return back()->with('error', 'Gagal mengeksekusi script hapus sidik jari dari mesin.');
+        }
+
+        $result = json_decode($rawOutput, true);
+
+        if (!$result || ($result['status'] ?? '') !== 'success') {
+            return back()->with('error', 'Gagal menghapus sidik jari dari mesin: ' . ($result['message'] ?? $rawOutput));
+        }
+
+        // Set jumlah_jari ke 0 di database website
+        $pegawai->update(['jumlah_jari' => 0]);
+
+        AuditLogger::log('delete_fingerprint', 'pegawai', $pegawai->id, null, [
+            'id_mesin' => $pegawai->id_mesin,
+            'nama' => $pegawai->nama_lengkap,
+            'deleted_count' => $result['deleted_count'] ?? 0,
+        ]);
+
+        return back()->with('success', $result['message'] ?? 'Berhasil menghapus sidik jari aparatur dari mesin biometrik!');
     }
 
     private function triggerAutoMachineSync(): void
