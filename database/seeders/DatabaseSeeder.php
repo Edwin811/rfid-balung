@@ -58,7 +58,7 @@ class DatabaseSeeder extends Seeder
             ['id_mesin' => '3', 'uid_kartu' => '1005', 'nama_lengkap' => 'SHOLEH A R', 'jabatan' => 'KASI PEMERINTAHAN'],
             ['id_mesin' => '4', 'uid_kartu' => '1006', 'nama_lengkap' => 'SITI AMINAH', 'jabatan' => 'KASI KESRA'],
             ['id_mesin' => '5', 'uid_kartu' => '1007', 'nama_lengkap' => 'KHOIRUL ANAM', 'jabatan' => 'KASI PELAYANAN'],
-            ['id_mesin' => '6', 'uid_kartu' => '0008811783', 'nama_lengkap' => 'DIAN CANDRA DINATA', 'jabatan' => 'KAUR KEUANGAN'],
+            ['id_mesin' => '6', 'uid_kartu' => '1008', 'nama_lengkap' => 'DIAN CANDRA DINATA', 'jabatan' => 'KAUR KEUANGAN'],
             ['id_mesin' => '7', 'uid_kartu' => '0002659221', 'nama_lengkap' => 'HUSNAN SUBANDI', 'jabatan' => 'KAUR PERENCANAAN'],
             ['id_mesin' => '8', 'uid_kartu' => '0002641926', 'nama_lengkap' => 'SUTOMO', 'jabatan' => 'KAUR TU DAN UMUM'],
             ['id_mesin' => '9', 'uid_kartu' => '0002681592', 'nama_lengkap' => 'ASMAD', 'jabatan' => 'KASUN KARANG ANYAR'],
