@@ -1,16 +1,16 @@
 @echo off
-title Presensi Desa Balunglor - Installer & Setup Otomatis
+title Presensi Desa Balunglor - Installer dan Setup Otomatis
 cd /d "%~dp0"
 
 echo ===============================================================
-echo   INSTALLER & SETUP OTOMATIS PRESENSI BIOMETRIK DESA BALUNGLOR
+echo   INSTALLER DAN SETUP OTOMATIS PRESENSI DESA BALUNGLOR
 echo ===============================================================
 echo.
 
-:: 1. Cek & Deteksi PHP di Laragon / XAMPP / PATH
+:: 1. Cek dan Deteksi PHP di Laragon atau XAMPP atau PATH
 where php >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [*] Mencari PHP dari instalasi Laragon/XAMPP...
+    echo [*] Mencari PHP dari instalasi Laragon atau XAMPP...
     for /d %%D in (C:\laragon\bin\php\php-*) do (
         if exist "%%D\php.exe" (
             set "PATH=%%D;%PATH%"
@@ -28,13 +28,13 @@ where php >nul 2>&1
 if %errorLevel% neq 0 (
     echo.
     echo [ERROR] PHP tidak ditemukan di sistem ini!
-    echo Silakan install atau buka Laragon / XAMPP terlebih dahulu.
+    echo Silakan install atau buka Laragon atau XAMPP terlebih dahulu.
     echo.
     pause
     exit /b 1
 )
 
-:: 2. Cek & Deteksi Composer
+:: 2. Cek dan Deteksi Composer
 where composer >nul 2>&1
 if %errorLevel% neq 0 (
     if exist "C:\laragon\bin\composer\composer.bat" (
@@ -47,7 +47,7 @@ if %errorLevel% neq 0 (
 
 :: 3. Jalankan Composer Install jika vendor belum ada
 if not exist "vendor\autoload.php" (
-    echo [*] Mengunduh pustaka Laravel (composer install)...
+    echo [*] Mengunduh pustaka Laravel composer install...
     call composer install
     if not exist "vendor\autoload.php" (
         echo.
@@ -64,15 +64,15 @@ if not exist ".env" (
 )
 
 :: 5. Generate APP_KEY
-echo [*] Menghasilkan kunci keamanan aplikasi (APP_KEY)...
+echo [*] Menghasilkan kunci keamanan aplikasi APP_KEY...
 call php artisan key:generate
 
-:: 6. Jalankan Migrasi Database & Seeder
-echo [*] Menyiapkan struktur database & 15 data aparatur desa...
+:: 6. Jalankan Migrasi Database dan Seeder
+echo [*] Menyiapkan struktur database dan 15 data aparatur desa...
 call php artisan migrate:fresh --seed
 if %errorLevel% neq 0 (
     echo.
-    echo [NOTE] Jika migrasi gagal, pastikan MySQL di Laragon / XAMPP sudah berjalan (Start All).
+    echo [NOTE] Jika migrasi gagal, pastikan MySQL di Laragon atau XAMPP sudah berjalan.
     echo.
 )
 
@@ -83,7 +83,7 @@ echo ===============================================================
 echo.
 echo Apakah Anda ingin memasang AUTO-START agar aplikasi ini 
 echo OTOMATIS NYALA di background setiap kali komputer dinyalakan?
-echo (Tanpa perlu buka Laragon & Tanpa perlu ketik perintah apapun)
+echo (Tanpa perlu buka Laragon dan Tanpa perlu ketik perintah apapun)
 echo.
 set /p autostart_choice="Pasang Auto-Start sekarang? (Y/N): "
 
