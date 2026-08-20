@@ -14,6 +14,12 @@ class SyncRfidAttendance extends Command
 
     public function handle(AttendanceService $attendanceService)
     {
+        if (!AttendanceService::isDeviceOnline()) {
+            $this->warn('ZKTeco RFID device is offline/unplugged. Skipping hardware socket fetch.');
+            $processedCount = $attendanceService->processUnprocessedDeviceLogs();
+            return 0;
+        }
+
         $this->info('Starting attendance sync from ZKTeco RFID machine...');
         
         $pythonScript = base_path('scripts/fetch_presensi.py');

@@ -12,6 +12,25 @@ use Illuminate\Support\Facades\Log;
 class AttendanceService
 {
     /**
+     * Fast 200ms socket availability check with 10s caching
+     * Mencegah website lemot saat mesin fisik ZKTeco tidak dicolokkan (unplugged/offline).
+     */
+    public static function isDeviceOnline(): bool
+    {
+        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 10, function () {
+            $ip = env('ZKT_IP', '169.254.176.250');
+            $port = intval(env('ZKT_PORT', 4370));
+            
+            $fp = @fsockopen($ip, $port, $errno, $errstr, 0.2);
+            if ($fp) {
+                fclose($fp);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    /**
      * Process a raw log record into presensi table
      */
     public function processLog(string $idMesinDevice, string $timestampAbsen, ?string $tipeVerifikasi = 'fingerprint', ?array $rawData = null): ?Presensi
