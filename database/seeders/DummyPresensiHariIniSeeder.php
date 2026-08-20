@@ -20,6 +20,12 @@ class DummyPresensiHariIniSeeder extends Seeder
         $admin = User::first();
         $adminId = $admin ? $admin->id : 1;
 
+        // Bersihkan data presensi hari ini terlebih dahulu agar fresh
+        Presensi::whereDate('tanggal', $today)->delete();
+        Perizinan::whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->delete();
+
         // Ambil seluruh 15 aparatur desa
         $pegawaiList = Pegawai::orderBy('id_mesin')->get();
 
@@ -28,6 +34,8 @@ class DummyPresensiHariIniSeeder extends Seeder
             return;
         }
 
+        // Pemetaan Presensi Hari Ini:
+        // Ada yang hadir lengkap (masuk & pulang), hadir masuk saja (belum pulang), terlambat, izin, sakit, dan BELUM ABSEN (null)
         $dummyMap = [
             1  => ['masuk' => '07:42:15', 'pulang' => '16:05:30', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
             2  => ['masuk' => '07:35:10', 'pulang' => '16:12:00', 'tipe_m' => 'fingerprint', 'tipe_p' => 'fingerprint', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
@@ -37,53 +45,56 @@ class DummyPresensiHariIniSeeder extends Seeder
             6  => ['masuk' => '07:28:40', 'pulang' => '16:30:10', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
             7  => ['masuk' => null, 'pulang' => null, 'tipe_m' => null, 'tipe_p' => null, 'status' => 'izin', 'ket' => 'Izin Rapat Koordinasi Kecamatan'],
             8  => ['masuk' => '07:45:00', 'pulang' => '16:04:20', 'tipe_m' => 'fingerprint', 'tipe_p' => 'fingerprint', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
-            9  => ['masuk' => '07:52:11', 'pulang' => '16:01:00', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
+            9  => ['masuk' => '07:52:11', 'pulang' => null, 'tipe_m' => 'rfid', 'tipe_p' => null, 'status' => 'hadir', 'ket' => 'Hadir Masuk (Sedang Bekerja)'],
             10 => ['masuk' => null, 'pulang' => null, 'tipe_m' => null, 'tipe_p' => null, 'status' => 'sakit', 'ket' => 'Sakit Demam (Surat Keterangan Dokter)'],
-            11 => ['masuk' => '08:08:20', 'pulang' => '16:10:00', 'tipe_m' => 'fingerprint', 'tipe_p' => 'fingerprint', 'status' => 'terlambat', 'ket' => 'Terlambat 8 Menit'],
-            12 => ['masuk' => '07:40:15', 'pulang' => '16:00:45', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
-            13 => ['masuk' => '07:55:00', 'pulang' => '16:05:00', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
-            14 => ['masuk' => '07:30:00', 'pulang' => '16:20:00', 'tipe_m' => 'fingerprint', 'tipe_p' => 'fingerprint', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
-            15 => ['masuk' => '07:15:00', 'pulang' => '17:00:00', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir Tepat Waktu'],
+            11 => ['masuk' => '08:08:20', 'pulang' => null, 'tipe_m' => 'fingerprint', 'tipe_p' => null, 'status' => 'terlambat', 'ket' => 'Terlambat 8 Menit (Belum Pulang)'],
+            12 => null, // BELUM ABSEN (Tidak Hadir / Belum Tap Masuk)
+            13 => ['masuk' => '07:55:00', 'pulang' => null, 'tipe_m' => 'rfid', 'tipe_p' => null, 'status' => 'hadir', 'ket' => 'Hadir Masuk (Sedang Bekerja)'],
+            14 => null, // BELUM ABSEN (Tidak Hadir / Belum Tap Masuk)
+            15 => null, // BELUM ABSEN (Tidak Hadir / Belum Tap Masuk)
         ];
 
         foreach ($pegawaiList as $p) {
             $idMesin = intval($p->id_mesin);
-            $conf = $dummyMap[$idMesin] ?? ['masuk' => '07:45:00', 'pulang' => '16:00:00', 'tipe_m' => 'rfid', 'tipe_p' => 'rfid', 'status' => 'hadir', 'ket' => 'Hadir'];
+            $conf = $dummyMap[$idMesin] ?? null;
+
+            // Jika diset null, pegawai ini dianggap BELUM ABSEN (Tidak ada record hari ini)
+            if (!$conf) {
+                continue;
+            }
 
             // Jika izin atau sakit, buat juga record perizinan-nya
             if (in_array($conf['status'], ['izin', 'sakit'])) {
-                Perizinan::updateOrCreate(
-                    [
-                        'pegawai_id' => $p->id,
-                        'tanggal_mulai' => $today,
-                        'tanggal_selesai' => $today,
-                    ],
-                    [
-                        'jenis_izin' => $conf['status'],
-                        'keterangan' => $conf['ket'],
-                        'dibuat_oleh' => $adminId,
-                    ]
-                );
+                Perizinan::create([
+                    'pegawai_id' => $p->id,
+                    'jenis_izin' => $conf['status'],
+                    'tanggal_mulai' => $today,
+                    'tanggal_selesai' => $today,
+                    'keterangan' => $conf['ket'],
+                    'dibuat_oleh' => $adminId,
+                ]);
             }
 
-            // Simpan / update data presensi hari ini
-            Presensi::updateOrCreate(
-                [
-                    'pegawai_id' => $p->id,
-                    'tanggal' => $today,
-                ],
-                [
-                    'jam_masuk' => $conf['masuk'],
-                    'jam_pulang' => $conf['pulang'],
-                    'tipe_verifikasi_masuk' => $conf['tipe_m'],
-                    'tipe_verifikasi_pulang' => $conf['tipe_p'],
-                    'status' => $conf['status'],
-                    'keterangan' => $conf['ket'],
-                    'updated_by' => $adminId,
-                ]
-            );
+            // Simpan data presensi hari ini
+            Presensi::create([
+                'pegawai_id' => $p->id,
+                'tanggal' => $today,
+                'jam_masuk' => $conf['masuk'],
+                'jam_pulang' => $conf['pulang'],
+                'tipe_verifikasi_masuk' => $conf['tipe_m'],
+                'tipe_verifikasi_pulang' => $conf['tipe_p'],
+                'status' => $conf['status'],
+                'keterangan' => $conf['ket'],
+                'updated_by' => $adminId,
+            ]);
         }
 
-        $this->command->info("Data presensi dummy hari ini ($today) untuk 15 aparatur desa BERHASIL dibuat!");
+        $this->command->info("Data presensi bervariasi hari ini ($today) BERHASIL dibuat!");
+        $this->command->info("- Hadir Lengkap : 6 orang");
+        $this->command->info("- Hadir (Belum Pulang) : 2 orang");
+        $this->command->info("- Terlambat : 2 orang");
+        $this->command->info("- Izin : 1 orang");
+        $this->command->info("- Sakit : 1 orang");
+        $this->command->info("- Belum Absen (Tidak Hadir) : 3 orang");
     }
 }
