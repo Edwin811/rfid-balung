@@ -7,11 +7,18 @@ echo   INSTALLER & SETUP OTOMATIS PRESENSI BIOMETRIK DESA BALUNGLOR
 echo ===============================================================
 echo.
 
-if not exist ".env" (
-    echo [*] Membuat file konfigurasi .env...
-    copy ".env.example" ".env"
-    call php artisan key:generate
+if not exist "vendor\autoload.php" (
+    echo [*] Mengunduh pustaka Laravel (composer install)...
+    call composer install
 )
+
+if not exist ".env" (
+    echo [*] Menyiapkan file konfigurasi .env...
+    copy ".env.example" ".env"
+)
+
+echo [*] Menghasilkan kunci keamanan aplikasi (APP_KEY)...
+call php artisan key:generate
 
 echo [*] Menyiapkan struktur database & 15 data aparatur desa...
 call php artisan migrate:fresh --seed
