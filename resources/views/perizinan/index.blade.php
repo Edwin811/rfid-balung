@@ -208,7 +208,14 @@
                         @if(auth()->user()->isAdmin() || auth()->user()->isOperator())
                         <td class="p-3 text-center">
                             <div class="flex items-center justify-center space-x-1.5">
-                                <button type="button" @click="editModal = true; editData = { id: {{ $p->id }}, pegawai_id: {{ $p->pegawai_id }}, jenis_izin: '{{ $p->jenis_izin }}', tanggal_mulai: '{{ $p->tanggal_mulai }}', tanggal_selesai: '{{ $p->tanggal_selesai }}', keterangan: '{{ addslashes($p->keterangan ?? '') }}' }"
+                                <button type="button" @click="editModal = true; editData = @js([
+                                    'id' => $p->id,
+                                    'pegawai_id' => $p->pegawai_id,
+                                    'jenis_izin' => $p->jenis_izin,
+                                    'tanggal_mulai' => \Carbon\Carbon::parse($p->tanggal_mulai)->format('Y-m-d'),
+                                    'tanggal_selesai' => \Carbon\Carbon::parse($p->tanggal_selesai)->format('Y-m-d'),
+                                    'keterangan' => $p->keterangan ?? ''
+                                ])"
                                     class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300 inline-flex items-center space-x-1" title="Edit Perizinan">
                                     <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     <span>Edit</span>
@@ -245,8 +252,6 @@
             {{ $perizinanList->links() }}
         </div>
     </div>
-
-</div>
 
     <!-- Modal Edit Perizinan -->
     <div x-show="editModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

@@ -55,7 +55,14 @@
                         </td>
                         <td class="p-4 text-center">
                             <div class="flex items-center justify-center space-x-2">
-                                <button @click="editModal = true; selectedUser = { id: {{ $u->id }}, name: '{{ addslashes($u->name) }}', username: '{{ addslashes($u->username) }}', email: '{{ addslashes($u->email ?? '') }}', role: '{{ $u->role }}', is_active: {{ $u->is_active ? 1 : 0 }} }"
+                                <button @click="editModal = true; selectedUser = @js([
+                                    'id' => $u->id,
+                                    'name' => $u->name,
+                                    'username' => $u->username,
+                                    'email' => $u->email ?? '',
+                                    'role' => $u->role,
+                                    'is_active' => $u->is_active ? 1 : 0
+                                ])"
                                     class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition border border-slate-300">
                                     Edit
                                 </button>
