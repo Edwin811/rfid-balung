@@ -7,21 +7,74 @@ echo   INSTALLER & SETUP OTOMATIS PRESENSI BIOMETRIK DESA BALUNGLOR
 echo ===============================================================
 echo.
 
+:: 1. Cek & Deteksi PHP di Laragon / XAMPP / PATH
+where php >nul 2>&1
+if %errorLevel% neq 0 (
+    echo [*] Mencari PHP dari instalasi Laragon/XAMPP...
+    for /d %%D in (C:\laragon\bin\php\php-*) do (
+        if exist "%%D\php.exe" (
+            set "PATH=%%D;%PATH%"
+            echo [OK] Ditemukan PHP di: %%D
+        )
+    )
+    if exist "C:\xampp\php\php.exe" (
+        set "PATH=C:\xampp\php;%PATH%"
+        echo [OK] Ditemukan PHP di: C:\xampp\php
+    )
+)
+
+:: Verifikasi apakah PHP tersedia
+where php >nul 2>&1
+if %errorLevel% neq 0 (
+    echo.
+    echo [ERROR] PHP tidak ditemukan di sistem ini!
+    echo Silakan install atau buka Laragon / XAMPP terlebih dahulu.
+    echo.
+    pause
+    exit /b 1
+)
+
+:: 2. Cek & Deteksi Composer
+where composer >nul 2>&1
+if %errorLevel% neq 0 (
+    if exist "C:\laragon\bin\composer\composer.bat" (
+        set "PATH=C:\laragon\bin\composer;%PATH%"
+    )
+    if exist "C:\ProgramData\ComposerSetup\bin\composer.bat" (
+        set "PATH=C:\ProgramData\ComposerSetup\bin;%PATH%"
+    )
+)
+
+:: 3. Jalankan Composer Install jika vendor belum ada
 if not exist "vendor\autoload.php" (
     echo [*] Mengunduh pustaka Laravel (composer install)...
     call composer install
+    if not exist "vendor\autoload.php" (
+        echo.
+        echo [ERROR] Pustaka vendor gagal terunduh.
+        pause
+        exit /b 1
+    )
 )
 
+:: 4. Buat File .env jika belum ada
 if not exist ".env" (
     echo [*] Menyiapkan file konfigurasi .env...
     copy ".env.example" ".env"
 )
 
+:: 5. Generate APP_KEY
 echo [*] Menghasilkan kunci keamanan aplikasi (APP_KEY)...
 call php artisan key:generate
 
+:: 6. Jalankan Migrasi Database & Seeder
 echo [*] Menyiapkan struktur database & 15 data aparatur desa...
 call php artisan migrate:fresh --seed
+if %errorLevel% neq 0 (
+    echo.
+    echo [NOTE] Jika migrasi gagal, pastikan MySQL di Laragon / XAMPP sudah berjalan (Start All).
+    echo.
+)
 
 echo.
 echo ===============================================================
@@ -47,3 +100,4 @@ echo.
 echo [*] Memulai server sekarang...
 start http://localhost:8000
 call start_app.bat
+pause
