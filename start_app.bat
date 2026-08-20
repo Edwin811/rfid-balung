@@ -3,7 +3,7 @@ title Presensi Biometrik Desa Balunglor - Server Runner
 cd /d "%~dp0"
 
 echo ===============================================================
-echo     SISTEM PRESENSI BIOMETRIK & RFID DESA BALUNGLOR
+echo     SISTEM PRESENSI BIOMETRIK DAN RFID DESA BALUNGLOR
 echo ===============================================================
 echo.
 
@@ -22,7 +22,7 @@ if %errorLevel% neq 0 (
     timeout /t 2 /nobreak >nul 2>&1
 )
 
-:: 2. Cek & Deteksi PHP di Laragon / XAMPP jika belum ada di PATH
+:: 2. Cek dan Deteksi PHP di Laragon atau XAMPP jika belum ada di PATH
 where php >nul 2>&1
 if %errorLevel% neq 0 (
     for /d %%D in (C:\laragon\bin\php\php-*) do (
