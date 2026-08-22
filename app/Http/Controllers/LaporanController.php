@@ -326,6 +326,12 @@ class LaporanController extends Controller
                 ];
             }
 
+            if ($status && $status !== 'all') {
+                $items = array_values(array_filter($items, function($item) use ($status) {
+                    return isset($item[$status]) && $item[$status] > 0;
+                }));
+            }
+
             return [
                 'days' => $days,
                 'items' => $items,

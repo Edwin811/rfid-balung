@@ -13,16 +13,13 @@
                 <p class="text-xs text-slate-500 font-medium">Filter laporan presensi berdasarkan periode bulan, rentang tanggal harian, aparatur desa, dan status kehadiran.</p>
             </div>
 
-            <!-- Mode Selector Tabs -->
+            <!-- Mode Selector Tabs (Hanya 2 Tab: Rekap Bulanan & Rincian Harian) -->
             <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
                 <button type="button" @click="mode = 'bulanan'" :class="mode === 'bulanan' ? 'bg-red-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'" class="px-4 py-2 rounded-lg transition">
                     Rekap Bulanan
                 </button>
                 <button type="button" @click="mode = 'harian'" :class="mode === 'harian' ? 'bg-red-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'" class="px-4 py-2 rounded-lg transition">
                     Rincian Harian / Rentang
-                </button>
-                <button type="button" @click="mode = 'individu'" :class="mode === 'individu' ? 'bg-red-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'" class="px-4 py-2 rounded-lg transition">
-                    Per Aparatur (Individu)
                 </button>
             </div>
         </div>
@@ -154,8 +151,8 @@
                     </div>
                 </div>
 
-                <!-- Filter Status Kehadiran (Halaman Harian / Individu) -->
-                <div x-show="mode !== 'bulanan'">
+                <!-- Filter Status Kehadiran (Tampil di Semua Tab) -->
+                <div>
                     <label for="status" class="block text-xs font-bold uppercase text-slate-600 mb-1">Filter Status</label>
                     <select id="status" name="status" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
                         <option value="">-- Semua Status --</option>
