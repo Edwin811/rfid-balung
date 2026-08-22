@@ -42,17 +42,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit_log.index');
     });
 
-    // Aksi Operasional (Khusus Admin & Operator)
+    // Aksi Operasional & Sinkronisasi (Admin & Operator)
     Route::middleware('role:admin,operator')->group(function () {
+        // Sync & Pull Mesin Fisik ZKTeco
+        Route::post('/pegawai/sync-machine', [PegawaiController::class, 'syncToMachine'])->name('pegawai.sync_machine');
+        Route::post('/pegawai/pull-machine', [PegawaiController::class, 'pullFromMachine'])->name('pegawai.pull_machine');
+        Route::get('/pegawai/pull-machine', fn() => redirect()->route('pegawai.index'));
+        Route::get('/pegawai/sync-machine', fn() => redirect()->route('pegawai.index'));
+
         // Edit Status Presensi
         Route::post('/presensi/{id}', [PresensiController::class, 'update'])->name('presensi.update');
 
         // Kelola Aparatur Desa
         Route::post('/pegawai', [PegawaiController::class, 'store'])->name('pegawai.store');
-        Route::match(['post', 'put'], '/pegawai/{id}', [PegawaiController::class, 'update'])->name('pegawai.update');
-        Route::post('/pegawai/{id}/restore', [PegawaiController::class, 'restore'])->name('pegawai.restore');
-        Route::delete('/pegawai/{id}', [PegawaiController::class, 'destroy'])->name('pegawai.destroy');
-        Route::post('/pegawai/{id}/delete-fingerprint', [PegawaiController::class, 'deleteFingerprint'])->name('pegawai.delete_fingerprint');
+        Route::match(['post', 'put'], '/pegawai/{id}', [PegawaiController::class, 'update'])->name('pegawai.update')->where('id', '[0-9]+');
+        Route::post('/pegawai/{id}/restore', [PegawaiController::class, 'restore'])->name('pegawai.restore')->where('id', '[0-9]+');
+        Route::delete('/pegawai/{id}', [PegawaiController::class, 'destroy'])->name('pegawai.destroy')->where('id', '[0-9]+');
+        Route::post('/pegawai/{id}/delete-fingerprint', [PegawaiController::class, 'deleteFingerprint'])->name('pegawai.delete_fingerprint')->where('id', '[0-9]+');
 
         // Kelola Perizinan
         Route::post('/perizinan', [PerizinanController::class, 'store'])->name('perizinan.store');
@@ -62,10 +68,6 @@ Route::middleware('auth')->group(function () {
 
     // Aksi Administrator Sistem (Khusus Admin 100%)
     Route::middleware('role:admin')->group(function () {
-        // Sync & Pull Mesin Fisik
-        Route::post('/pegawai/sync-machine', [PegawaiController::class, 'syncToMachine'])->name('pegawai.sync_machine');
-        Route::post('/pegawai/pull-machine', [PegawaiController::class, 'pullFromMachine'])->name('pegawai.pull_machine');
-
         // Backup Database & Clean Log
         Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
         Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
