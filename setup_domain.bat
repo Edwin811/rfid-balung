@@ -13,8 +13,8 @@ set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
 :: Check for Administrative Privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [NOTE] Mengalihkan ke mode Administrator...
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    echo [NOTE] Meminta izin Administrator Windows...
+    powershell -Command "Start-Process cmd.exe -ArgumentList '/k `\"\"%~f0\"`\"' -Verb RunAs"
     exit /b
 )
 
@@ -31,8 +31,9 @@ if %errorLevel% eq 0 (
 echo.
 echo ===============================================================
 echo Alamat domain lokal Anda kini resmi aktif:
-echo 👉 http://presensi.balunglor.desa.id
-echo 👉 http://presensi.local
+echo - http://presensi.balunglor.desa.id:8000
+echo - http://presensi.local:8000
 echo ===============================================================
 echo.
 pause
+exit
