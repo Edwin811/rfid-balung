@@ -42,6 +42,12 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
+:: Aktifkan cache untuk performa optimal
+echo [*] Mengoptimalkan cache aplikasi...
+php artisan config:cache >nul 2>&1
+php artisan route:cache >nul 2>&1
+php artisan view:cache >nul 2>&1
+
 echo [*] Memulai Web Server Presensi Desa Balunglor...
 echo [*] Alamat: http://localhost:8000
 echo ===============================================================
