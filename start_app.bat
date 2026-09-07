@@ -7,22 +7,10 @@ echo     SISTEM PRESENSI BIOMETRIK DAN RFID DESA BALUNGLOR
 echo ===============================================================
 echo.
 
-:: 1. Auto-Start MySQL jika belum aktif (Tanpa perlu buka aplikasi Laragon)
-powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if (!$c) { exit 1 }" >nul 2>&1
-if %errorLevel% neq 0 (
-    echo [*] Mengaktifkan database MySQL di background...
-    net start mysql >nul 2>&1
-    if %errorLevel% neq 0 (
-        for /d %%D in (C:\laragon\bin\mysql\mysql-*) do (
-            if exist "%%D\bin\mysqld.exe" (
-                start "" /B "%%D\bin\mysqld.exe" --console >nul 2>&1
-            )
-        )
-    )
-    timeout /t 2 /nobreak >nul 2>&1
-)
+:: Bersihkan proses PHP zombie sebelumnya agar port 8000 tidak bentrok
+taskkill /F /IM php.exe >nul 2>&1
 
-:: 2. Cek dan Deteksi PHP di Laragon atau XAMPP jika belum ada di PATH
+:: 1. Cek dan Deteksi PHP di Laragon atau XAMPP jika belum ada di PATH
 where php >nul 2>&1
 if %errorLevel% neq 0 (
     for /d %%D in (C:\laragon\bin\php\php-*) do (
