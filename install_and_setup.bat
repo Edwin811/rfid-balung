@@ -49,13 +49,13 @@ if not exist "vendor\autoload.php" (
     where composer >nul 2>&1
     if %errorLevel% eq 0 (
         echo [*] Menjalankan composer install...
-        call composer install --no-interaction --prefer-dist
+        call composer install --no-interaction --prefer-dist --ignore-platform-reqs
     ) else (
         echo [*] Composer sistem belum terpasang. Mengunduh portable composer.phar...
         php -r "copy('https://getcomposer.org/download/latest-stable/composer.phar', 'composer.phar');"
         if exist "composer.phar" (
             echo [*] Menjalankan instalasi dependensi via portable composer...
-            php composer.phar install --no-interaction --prefer-dist
+            php composer.phar install --no-interaction --prefer-dist --ignore-platform-reqs
         ) else (
             echo.
             echo [ERROR] Gagal mengunduh Composer otomatis.
