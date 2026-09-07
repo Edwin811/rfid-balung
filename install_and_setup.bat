@@ -34,27 +34,39 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-:: 2. Cek dan Deteksi Composer
-where composer >nul 2>&1
-if %errorLevel% neq 0 (
-    if exist "C:\laragon\bin\composer\composer.bat" (
-        set "PATH=C:\laragon\bin\composer;%PATH%"
-    )
-    if exist "C:\ProgramData\ComposerSetup\bin\composer.bat" (
-        set "PATH=C:\ProgramData\ComposerSetup\bin;%PATH%"
-    )
-)
-
-:: 3. Jalankan Composer Install jika vendor belum ada
+:: 2. Cek dan Deteksi Composer / Auto-Download composer.phar
 if not exist "vendor\autoload.php" (
-    echo [*] Mengunduh pustaka Laravel composer install...
-    call composer install
-    if not exist "vendor\autoload.php" (
-        echo.
-        echo [ERROR] Pustaka vendor gagal terunduh.
-        pause
-        exit /b 1
+    echo [*] Memeriksa pustaka vendor Laravel...
+    where composer >nul 2>&1
+    if %errorLevel% neq 0 (
+        if exist "C:\laragon\bin\composer\composer.bat" (
+            set "PATH=C:\laragon\bin\composer;%PATH%"
+        ) else if exist "C:\ProgramData\ComposerSetup\bin\composer.bat" (
+            set "PATH=C:\ProgramData\ComposerSetup\bin;%PATH%"
+        )
     )
+
+    where composer >nul 2>&1
+    if %errorLevel% eq 0 (
+        echo [*] Menjalankan composer install...
+        call composer install --no-interaction --prefer-dist
+    ) else (
+        echo [*] Composer sistem belum terpasang. Mengunduh portable composer.phar...
+        php -r "copy('https://getcomposer.org/download/latest-stable/composer.phar', 'composer.phar');"
+        if exist "composer.phar" (
+            echo [*] Menjalankan instalasi dependensi via portable composer...
+            php composer.phar install --no-interaction --prefer-dist
+        ) else (
+            echo.
+            echo [ERROR] Gagal mengunduh Composer otomatis.
+            echo Silakan unduh dan pasang Composer di: https://getcomposer.org/Composer-Setup.exe
+            echo.
+            pause
+            exit /b 1
+        )
+    )
+) else (
+    echo [OK] Pustaka vendor sudah tersedia. Melewati proses composer install.
 )
 
 :: 4. Buat File .env jika belum ada
