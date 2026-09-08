@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Services\AuditLogger;
+use App\Services\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +50,9 @@ class PresensiController extends Controller
             ];
         })->values()->toArray();
 
-        return view('presensi.index', compact('tanggal', 'search', 'pegawaiList', 'presensiList', 'presensiFormattedList'));
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
+
+        return view('presensi.index', compact('tanggal', 'search', 'pegawaiList', 'presensiList', 'presensiFormattedList', 'isDeviceOnline'));
     }
 
     public function update(Request $request, $id)
@@ -81,9 +84,9 @@ class PresensiController extends Controller
     {
         try {
             \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-            return back()->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
+            return redirect()->back(fallback: route('presensi.index'))->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
         } catch (\Throwable $e) {
-            return back()->with('error', 'Gagal menarik data dari mesin: ' . $e->getMessage());
+            return redirect()->back(fallback: route('presensi.index'))->with('error', 'Gagal menarik data dari mesin: ' . $e->getMessage());
         }
     }
 
@@ -106,10 +109,12 @@ class PresensiController extends Controller
         }
 
         $presensiList = $query->get();
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
 
         return response()->json([
             'status' => 'success',
             'timestamp' => now()->toTimeString(),
+            'device_online' => $isDeviceOnline,
             'data' => $presensiList->map(function ($p, $index) {
                 return [
                     'no' => $index + 1,

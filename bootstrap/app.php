@@ -22,7 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*')
+                || $request->is('dashboard/realtime')
+                || $request->is('*realtime*')
+                || $request->ajax()
+                || $request->wantsJson()
+                || $request->header('X-Requested-With') === 'XMLHttpRequest',
         );
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, Request $request) {
             return redirect()->route('login')->with('error', 'Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.');

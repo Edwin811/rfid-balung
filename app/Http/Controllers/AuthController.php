@@ -31,7 +31,27 @@ class AuthController extends Controller
 
             AuditLogger::log('login', 'User', $user->id, null, ['username' => $user->username, 'role' => $user->role]);
 
-            return redirect()->intended(route('dashboard'));
+            // Validasi ketat rute tujuan (intended URL) pasca-login:
+            // Hanya izinkan navigasi ke halaman web visual (HTML) yang sah & sesuai hak akses role.
+            $intended = session()->pull('url.intended');
+            if ($intended) {
+                $path = parse_url($intended, PHP_URL_PATH) ?? '/';
+                $allowedPaths = ['/', '/presensi', '/pegawai', '/perizinan', '/laporan'];
+
+                if (in_array($user->role, ['admin', 'kepala_desa', 'wakil_kepala_desa'], true)) {
+                    $allowedPaths[] = '/audit-log';
+                }
+                if ($user->role === 'admin') {
+                    $allowedPaths[] = '/backup';
+                    $allowedPaths[] = '/users';
+                }
+
+                if (in_array($path, $allowedPaths, true)) {
+                    return redirect()->to($intended);
+                }
+            }
+
+            return redirect()->route('dashboard');
         }
 
         return back()->withErrors([

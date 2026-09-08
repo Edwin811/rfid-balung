@@ -5,66 +5,61 @@
 @section('content')
 <div x-data="presensiHarian()" x-init="startAutoRefresh()">
 
-    <!-- Late Notification Toast Banner (Realtime Audio & Visual Popup) -->
-    <template x-if="lateToast">
-        <div class="fixed top-20 right-6 z-[99999] max-w-md w-full bg-red-600 text-white rounded-2xl shadow-2xl p-4 border-2 border-white flex items-start space-x-3 transition-all duration-300">
-            <div class="p-2.5 bg-white/20 rounded-xl shrink-0">
-                <svg class="w-7 h-7 text-amber-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            </div>
-            <div class="flex-1">
-                <div class="font-extrabold text-xs uppercase tracking-wider text-amber-200">⚠️ PERINGATAN PRESENSI TERLAMBAT</div>
-                <div class="font-bold text-base mt-0.5 text-white" x-text="lateToast.nama"></div>
-                <div class="text-xs text-red-100 font-medium mt-0.5" x-text="lateToast.jabatan + ' • Scan Masuk: ' + lateToast.jam_masuk + ' WIB'"></div>
-            </div>
-            <button @click="lateToast = null" class="text-white/80 hover:text-white font-bold text-sm p-1">✕</button>
-        </div>
-    </template>
-
     <!-- Banner Aturan Presensi -->
-    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl p-4 mb-5 shadow-sm text-white border border-slate-700/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <div class="flex items-center space-x-3">
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-slate-700">
+        <div class="flex items-start sm:items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
             <div>
-                <h4 class="font-extrabold text-sm text-white">Aturan Jam Kerja & Presensi Desa Balunglor</h4>
-                <p class="text-xs text-slate-300 mt-0.5">
-                    <span class="text-emerald-400 font-bold">Scan Masuk:</span> Maks 08:00 WIB (Tepat Waktu) &nbsp;•&nbsp;
-                    <span class="text-blue-300 font-bold">Scan Pulang Reguler:</span> Mulai 16:00 WIB &nbsp;•&nbsp;
-                    <span class="text-amber-300 font-bold">Pulang &lt; 16:00 WIB:</span> Wajib punya Perizinan Resmi di sistem.
+                <h4 class="font-bold text-sm text-slate-800">Aturan Jam Kerja & Presensi</h4>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    <span class="font-semibold text-slate-700">Jam Masuk:</span> Maks. 08:00 WIB (Tepat Waktu) &nbsp;•&nbsp;
+                    <span class="font-semibold text-slate-700">Jam Pulang:</span> Mulai 16:00 WIB &nbsp;•&nbsp;
+                    <span class="text-slate-400">Pulang sebelum 16:00 WIB wajib memiliki perizinan resmi.</span>
                 </p>
             </div>
         </div>
     </div>
 
     <!-- Filter Bar -->
-    <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <form action="{{ route('presensi.index') }}" method="GET" class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-            <div>
-                <label for="tanggal" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pilih Tanggal</label>
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <form action="{{ route('presensi.index') }}" method="GET" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <!-- Pilih Tanggal -->
+            <div class="flex items-center space-x-2">
                 <input type="date" id="tanggal" name="tanggal" value="{{ $tanggal }}" x-model="tanggal" @change="fetchData()"
-                    class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                    class="px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-600/30 focus:border-red-600 font-medium shadow-sm transition">
             </div>
 
-            <div>
-                <label for="search" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Cari Nama / Jabatan</label>
-                <input type="text" id="search" name="search" value="{{ $search }}" x-model="search" @input.debounce.300ms="fetchData()" placeholder="Nama aparatur desa..."
-                    class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+            <!-- Search Input Lebih Mencolok & Icon Search -->
+            <div class="relative w-full sm:w-64">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <input type="text" id="search" name="search" value="{{ $search }}" x-model="search" @input.debounce.300ms="fetchData()" placeholder="Cari aparatur / jabatan..."
+                    class="w-full pl-9 pr-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-600/30 focus:border-red-600 bg-white font-medium shadow-sm transition placeholder-slate-400">
             </div>
 
-            <div class="sm:self-end flex items-center space-x-2">
-                <button type="submit" class="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs transition shadow">
-                    Tampilkan
-                </button>
-                <a href="{{ route('presensi.sync_now') }}" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center space-x-1 transition shadow">
-                    <svg class="w-3.5 h-3.5 animate-spin text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span>Sync Now</span>
-                </a>
-            </div>
+            <button type="submit" class="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs sm:text-sm transition shadow-sm">
+                Tampilkan
+            </button>
         </form>
 
-        <div class="flex items-center space-x-3 text-xs text-slate-500">
-            <div class="flex items-center space-x-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                <span>Auto-Sync Realtime: <strong class="text-slate-800" x-text="lastUpdated">{{ date('H:i:s') }}</strong></span>
-            </div>
+        <!-- Status Konektivitas Mesin -->
+        <div class="flex items-center space-x-2 text-xs font-medium px-3.5 py-2 rounded-xl border transition-all duration-300 shadow-sm flex-shrink-0 self-start sm:self-auto"
+            :class="deviceOnline ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'">
+            <span class="relative flex h-2.5 w-2.5">
+                <span x-show="deviceOnline" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="deviceOnline ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+            </span>
+            <span class="font-semibold" x-text="deviceOnline ? 'Terhubung' : 'Tidak Terhubung'">
+                {{ $isDeviceOnline ? 'Terhubung' : 'Tidak Terhubung' }}
+            </span>
+            <span class="text-[11px] font-mono pl-1.5 border-l"
+                  :class="deviceOnline ? 'border-emerald-300 text-emerald-700' : 'border-slate-300 text-slate-400'"
+                  x-text="deviceOnline ? lastUpdated : '--:--:--'">
+                {{ $isDeviceOnline ? date('H:i:s') : '--:--:--' }}
+            </span>
         </div>
     </div>
 
@@ -205,55 +200,42 @@
             selectedRecord: {},
             tanggal: '{{ $tanggal }}',
             search: '{{ $search }}',
-            lastUpdated: '{{ date('H:i:s') }}',
+            lastUpdated: '{{ $isDeviceOnline ? date('H:i:s') : '--:--:--' }}',
+            deviceOnline: {{ $isDeviceOnline ? 'true' : 'false' }},
             presensiList: @json($presensiFormattedList),
-            lateToast: null,
-            knownLateIds: new Set((@json($presensiFormattedList)).filter(i => i.status === 'terlambat').map(i => i.id)),
 
             fetchData() {
                 const params = new URLSearchParams({
                     tanggal: this.tanggal,
                     search: this.search
                 });
-                fetch('{{ route('presensi.harian_realtime') }}?' + params.toString())
-                    .then(res => res.json())
+                fetch('{{ route('presensi.harian_realtime') }}?' + params.toString(), {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Network response not ok');
+                        return res.json();
+                    })
                     .then(data => {
                         if (data.status === 'success') {
-                            // Deteksi entri terlambat baru
-                            data.data.forEach(item => {
-                                if (item.status === 'terlambat' && !this.knownLateIds.has(item.id)) {
-                                    this.knownLateIds.add(item.id);
-                                    this.triggerLateAlert(item);
-                                }
-                            });
-
+                            this.deviceOnline = !!data.device_online;
                             this.presensiList = data.data;
-                            this.lastUpdated = data.timestamp;
+                            if (this.deviceOnline) {
+                                this.lastUpdated = data.timestamp;
+                            }
                         }
                     })
-                    .catch(err => console.error('Presensi realtime error:', err));
-            },
-
-            triggerLateAlert(item) {
-                this.lateToast = item;
-                // Suara notifikasi Bahasa Indonesia (Web Speech Synthesis API)
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                    const text = `Peringatan! Aparatur ${item.nama}, ${item.jabatan}, absen terlambat pada pukul ${item.jam_masuk}!`;
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'id-ID';
-                    utterance.rate = 0.95;
-                    window.speechSynthesis.speak(utterance);
-                }
-                setTimeout(() => {
-                    if (this.lateToast && this.lateToast.id === item.id) {
-                        this.lateToast = null;
-                    }
-                }, 8000);
+                    .catch(err => {
+                        console.error('Presensi realtime error:', err);
+                        this.deviceOnline = false;
+                    });
             },
 
             startAutoRefresh() {
-                // Realtime Auto Fetch Every 1.5 Seconds! No manual page refresh needed!
+                // Realtime Auto Fetch Every 1.5 Seconds
                 setInterval(() => {
                     this.fetchData();
                 }, 1500);

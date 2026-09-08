@@ -180,6 +180,28 @@ class LaporanController extends Controller
                 $html .= '</tr>';
             }
             $html .= '</tbody></table>';
+
+            // Keterangan Warna Kolom & Kode Status (Persis Seperti di PDF)
+            $html .= '<br>';
+            $html .= '<table style="border: 1px solid #000000; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; font-size: 9pt;">';
+            $html .= '<tr>';
+            $html .= '<td colspan="10" style="border: 1px solid #000000; background-color: #f8fafc; font-weight: bold; padding: 6px 10px; text-align: left;">';
+            $html .= 'KETERANGAN WARNA KOLOM &amp; KODE STATUS:';
+            $html .= '</td>';
+            $html .= '</tr>';
+            $html .= '<tr>';
+            $html .= '<td style="width: 25px; background-color: #4ade80; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>HIJAU (OK / OK-OK)</b> : Hadir Tepat Waktu</td>';
+            $html .= '<td style="width: 25px; background-color: #facc15; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>KUNING (TL1 / PSW)</b> : Terlambat / Pulang Sebelum Waktu</td>';
+            $html .= '<td style="width: 25px; background-color: #38bdf8; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>BIRU (IT / SK / CT)</b> : Izin Tidak Masuk / Sakit / Cuti</td>';
+            $html .= '<td style="width: 25px; background-color: #f87171; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>MERAH (TK)</b> : Tanpa Keterangan / Tidak Hadir</td>';
+            $html .= '<td style="width: 25px; background-color: #e2e8f0; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>ABU-ABU (LIBUR)</b> : Akhir Pekan (Sabtu &amp; Minggu)</td>';
+            $html .= '</tr>';
+            $html .= '</table>';
         } else {
             $html .= '<table><thead><tr>';
             $html .= '<th>NO</th><th>TANGGAL</th><th>NAMA APARATUR</th><th>JABATAN</th><th>JAM MASUK</th><th>JAM PULANG</th><th>STATUS</th><th>KETERANGAN</th>';

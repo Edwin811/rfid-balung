@@ -66,7 +66,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/perizinan/{id}', [PerizinanController::class, 'destroy'])->name('perizinan.destroy');
     });
 
-    // Aksi Administrator Sistem (Khusus Admin 100%)
+    // Pengaturan Akun Pengguna (Bisa diakses seluruh pengguna untuk profil/password akun sendiri, admin mengelola semua)
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::post('/users/{id}', [UserController::class, 'update'])->name('users.update');
+    Route::post('/users/{id}/password', [UserController::class, 'changePassword'])->name('users.change_password');
+
+    // Aksi Khusus Administrator Sistem
     Route::middleware('role:admin')->group(function () {
         // Backup Database & Clean Log
         Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
@@ -75,10 +80,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/backup/clean-duplicates', [BackupController::class, 'cleanDuplicates'])->name('backup.clean_duplicates');
         Route::get('/backup/download/{filename}', [BackupController::class, 'download'])->name('backup.download');
 
-        // Manajemen Pengguna Sistem
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        // Tambah & Hapus Pengguna (Khusus Admin)
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::post('/users/{id}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 });

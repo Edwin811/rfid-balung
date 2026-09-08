@@ -7,7 +7,8 @@ echo     SISTEM PRESENSI BIOMETRIK DAN RFID DESA BALUNGLOR
 echo ===============================================================
 echo.
 
-:: Bersihkan proses PHP zombie sebelumnya agar port 8000 tidak bentrok
+:: Bersihkan proses sebelumnya agar port 80, 443, dan 8000 tidak bentrok
+taskkill /F /IM httpd.exe >nul 2>&1
 taskkill /F /IM php.exe >nul 2>&1
 
 :: 1. Auto-Start MySQL Lokal jika belum aktif
@@ -49,18 +50,36 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-:: Aktifkan multi-worker PHP agar melayani banyak request secara paralel
-set PHP_CLI_SERVER_WORKERS=4
-
-:: Aktifkan cache untuk performa optimal
+:: 3. Optimasi Cache Laravel
 echo [*] Mengoptimalkan cache aplikasi...
 php artisan config:cache >nul 2>&1
 php artisan route:cache >nul 2>&1
 php artisan view:cache >nul 2>&1
 
-echo [*] Memulai Web Server Presensi Desa Balunglor (Multi-Worker: 4)...
-echo [*] Alamat: http://localhost:8000
-echo ===============================================================
+:: 4. Cari dan Jalankan Apache Laragon dengan SSL
+set "APACHE_DIR=C:\laragon\bin\apache\httpd-2.4.54-win64-VS16"
+set "APACHE_EXE=%APACHE_DIR%\bin\httpd.exe"
 
+if not exist "%APACHE_EXE%" goto RUN_PHP_FALLBACK
+
+echo.
+echo ===============================================================
+echo [OK] Web Server Apache (HTTPS dan HTTP) BERHASIL DIAKTIFKAN!
+echo ===============================================================
+echo Alamat Akses Resmi:
+echo  - https://presensi.balunglor.desa.id  (Aman dengan Gembok SSL)
+echo  - http://presensi.balunglor.desa.id:8000
+echo  - http://localhost:8000
+echo ===============================================================
+echo.
+echo Server sedang berjalan...
+echo (Jangan tutup jendela ini agar website tetap aktif)
+echo (Untuk mematikan server, Anda bisa menutup jendela ini atau jalankan stop_app.bat)
+echo.
+"%APACHE_EXE%" -d "%APACHE_DIR%"
+exit /b
+
+:RUN_PHP_FALLBACK
+echo [NOTE] Apache Laragon tidak ditemukan. Menjalankan PHP Built-in Server...
+set PHP_CLI_SERVER_WORKERS=4
 php -S 0.0.0.0:8000 -t public
-pause

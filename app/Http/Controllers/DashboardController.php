@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\DeviceLog;
+use App\Services\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,9 +55,9 @@ class DashboardController extends Controller
         // Chart 7 hari terakhir
         $chartData = $this->get7DayChartData();
 
-        // Device Connection Status (online if device log received in last 10 minutes)
+        // Device Connection Status (realtime socket check to ZKTeco machine)
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
         $lastLog = DeviceLog::latest('timestamp_absen')->first();
-        $isDeviceOnline = $lastLog ? $lastLog->timestamp_absen->gt(now()->subMinutes(10)) : false;
 
         $presensiTodayList = $presensiToday->map(function ($p) {
             return [
@@ -127,7 +128,7 @@ class DashboardController extends Controller
         $countTidakHadir = max(0, $totalPegawai - $presensiToday->count());
 
         $lastLog = DeviceLog::latest('timestamp_absen')->first();
-        $isDeviceOnline = $lastLog ? $lastLog->timestamp_absen->gt(now()->subMinutes(10)) : false;
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
 
         return response()->json([
             'status' => 'success',

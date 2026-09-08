@@ -67,7 +67,7 @@
                 <div>
                     <div class="flex items-center space-x-2.5">
                         <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight drop-shadow-sm">Desa Balunglor</h1>
-                        <span class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-widest shadow-sm">PROSENDI UNEJ 2026</span>
+                        <span class="bg-white/15 text-white border border-white/20 font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-widest">PROSENDI UNEJ 2026</span>
                     </div>
                     <p class="text-xs text-red-100 font-medium mt-0.5">Sistem Informasi Presensi Biometrik & RFID Terintegrasi Aparatur Desa</p>
                 </div>
@@ -120,14 +120,14 @@
                     <span>Kelola Perizinan Aparatur Desa</span>
                 </a>
 
-                @if(Auth::user()->isAdmin())
-                <!-- 6. Pengguna -->
+                <!-- 6. Pengguna (Bisa diakses oleh semua pengguna untuk akunnya sendiri, admin mengelola semua) -->
                 <a href="{{ route('users.index') }}" class="px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center space-x-2 {{ request()->routeIs('users.*') ? 'bg-white text-jember-900 font-extrabold shadow-md' : 'text-red-100 hover:bg-red-900/70' }}">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     <span>Pengguna</span>
                 </a>
 
-                <!-- 7. Backup Database -->
+                @if(Auth::user()->isAdmin())
+                <!-- 7. Backup Database (Khusus Admin) -->
                 <a href="{{ route('backup.index') }}" class="px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center space-x-2 {{ request()->routeIs('backup.*') ? 'bg-white text-jember-900 font-extrabold shadow-md' : 'text-red-100 hover:bg-red-900/70' }}">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                     <span>Backup Database</span>
@@ -139,21 +139,29 @@
 
     <!-- Page Body Container -->
     <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1">
+        <!-- Global Flash Alert Success (Modern Dismissible Style) -->
         @if(session('success'))
-        <div class="mb-5 p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center justify-between shadow-sm">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">✓</div>
-                <p class="text-sm font-semibold">{{ session('success') }}</p>
+        <div x-data="{ show: true }" x-show="show" x-transition class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl mb-6 shadow-sm flex items-center justify-between transition-all duration-300">
+            <div class="flex items-center space-x-3 pr-4">
+                <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-xs font-bold leading-relaxed">{{ session('success') }}</span>
             </div>
+            <button @click="show = false" type="button" class="text-emerald-500 hover:text-emerald-800 hover:bg-emerald-100/80 p-1.5 rounded-xl transition flex items-center justify-center shrink-0" title="Tutup Notifikasi">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
         @endif
 
+        <!-- Global Flash Alert Error (Modern Dismissible Style) -->
         @if(session('error'))
-        <div class="mb-5 p-4 rounded-xl bg-red-50 border border-red-300 text-red-900 flex items-center justify-between shadow-sm">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">!</div>
-                <p class="text-sm font-semibold">{{ session('error') }}</p>
+        <div x-data="{ show: true }" x-show="show" x-transition class="bg-rose-50 border border-rose-200 text-rose-800 px-5 py-4 rounded-2xl mb-6 shadow-sm flex items-center justify-between transition-all duration-300">
+            <div class="flex items-center space-x-3 pr-4">
+                <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-xs font-bold leading-relaxed">{{ session('error') }}</span>
             </div>
+            <button @click="show = false" type="button" class="text-rose-500 hover:text-rose-800 hover:bg-rose-100/80 p-1.5 rounded-xl transition flex items-center justify-center shrink-0" title="Tutup Notifikasi">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
         @endif
 
@@ -171,7 +179,7 @@
                 </div>
             </div>
             <div class="text-right text-slate-500 font-medium">
-                <span>(PROSENDI 2026 &bull; FASILKOM X TEKNIK ELEKTRO UNIVERSITAS JEMBER)</span>
+                <span>(PROSENDI 2026 | FASILKOM X TEKNIK ELEKTRO UNIVERSITAS JEMBER)</span>
             </div>
         </div>
     </footer>

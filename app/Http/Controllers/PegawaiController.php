@@ -45,19 +45,7 @@ class PegawaiController extends Controller
         }
         $arsipList = $arsipQuery->paginate(20, ['*'], 'page_arsip');
 
-        // 3. Log Histori Perangkat & Mutasi RFID/Aparatur
-        $historiQuery = AuditLog::with('user')
-            ->whereIn('aksi', [
-                'tambah_pegawai', 'update_pegawai', 'hapus_pegawai', 
-                'sync_users_to_machine', 'pull_users_from_machine',
-                'ganti_kartu_rfid', 'pensiun_pegawai', 'mutasi_pegawai',
-                'delete_fingerprint'
-            ])
-            ->orderBy('created_at', 'desc');
-
-        $historiPerangkat = $historiQuery->paginate(20, ['*'], 'page_histori');
-
-        return view('pegawai.index', compact('pegawaiList', 'arsipList', 'historiPerangkat', 'search', 'tab'));
+        return view('pegawai.index', compact('pegawaiList', 'arsipList', 'search', 'tab'));
     }
 
     public function store(Request $request)
@@ -131,19 +119,32 @@ class PegawaiController extends Controller
         return back()->with('success', 'Data Aparatur Desa & Kartu RFID berhasil diperbarui dan tersinkron!');
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $pegawai = Pegawai::findOrFail($id);
         $oldData = $pegawai->toArray();
-        $pegawai->update(['status_kepegawaian' => 'pensiun', 'is_active' => false]);
+
+        $kategori = $request->input('kategori', 'pensiun');
+        if (!in_array($kategori, ['pensiun', 'mutasi', 'non_aktif'])) {
+            $kategori = 'pensiun';
+        }
+
+        $labelKategori = [
+            'pensiun' => 'Pensiun (Purna Tugas)',
+            'mutasi' => 'Mutasi Tugas',
+            'non_aktif' => 'Diarsipkan (Non-Aktif)'
+        ][$kategori] ?? 'Diarsipkan';
+
+        $pegawai->update(['status_kepegawaian' => $kategori, 'is_active' => false]);
         $pegawai->delete();
 
-        AuditLogger::log('hapus_pegawai', 'pegawai', $id, $oldData, null);
+        $actionLog = $kategori === 'pensiun' ? 'pensiun_pegawai' : ($kategori === 'mutasi' ? 'mutasi_pegawai' : 'hapus_pegawai');
+        AuditLogger::log($actionLog, 'pegawai', $id, $oldData, ['status_baru' => $kategori, 'kategori' => $labelKategori]);
 
         // Otomatis push perubahan ke mesin fisik ZKTeco di background
         $this->triggerAutoMachineSync();
 
-        return back()->with('success', 'Aparatur Desa berhasil diarsipkan (Pensiun / Soft Delete). Seluruh data presensi historis tetap tersimpan 100%!');
+        return back()->with('success', "Aparatur Desa '{$pegawai->nama_lengkap}' berhasil dicatat sebagai {$labelKategori} dan diarsipkan. Seluruh data presensi historis tetap tersimpan 100%!");
     }
 
     public function restore($id)
@@ -191,30 +192,37 @@ class PegawaiController extends Controller
         $users = $result['data'] ?? [];
         $pulledCount = 0;
         $updatedCount = 0;
-        $validMachineIds = [];
 
         foreach ($users as $u) {
             $idMesin = (string) $u['user_id'];
-            $validMachineIds[] = $idMesin;
-            $nama = !empty($u['nama']) ? $u['nama'] : "Aparatur ID {$idMesin}";
+            $namaMesin = !empty($u['nama']) ? trim($u['nama']) : '';
             $card = !empty($u['card']) ? (string) $u['card'] : null;
             $jumlahJari = intval($u['finger_count'] ?? 0);
 
             $pegawai = Pegawai::withTrashed()->where('id_mesin', $idMesin)->first();
 
             if ($pegawai) {
-                if ($pegawai->trashed()) {
-                    $pegawai->restore();
-                }
-                $pegawai->update([
-                    'nama_lengkap' => $nama,
-                    'uid_kartu' => $card,
+                // UPDATE SELEKTIF & AMAN:
+                // 1. Pertahankan nama resmi dan jabatan di website (jangan ditimpa jika sudah ada)
+                // 2. Pertahankan status pensiun/mutasi jika sudah diarsipkan
+                // 3. Hanya perbarui jumlah template biometrik sidik jari dan nomor kartu jika terdaftar di mesin
+                $updateData = [
                     'jumlah_jari' => $jumlahJari,
-                    'is_active' => true,
-                    'status_kepegawaian' => 'aktif',
-                ]);
+                ];
+
+                if ($card && empty($pegawai->uid_kartu)) {
+                    $updateData['uid_kartu'] = $card;
+                }
+
+                if (str_starts_with($pegawai->nama_lengkap, 'Aparatur ID') && !empty($namaMesin)) {
+                    $updateData['nama_lengkap'] = strtoupper($namaMesin);
+                }
+
+                $pegawai->update($updateData);
                 $updatedCount++;
             } else {
+                // Jika user baru di mesin fisik dan belum ada di web, tambahkan tanpa menghapus data yang ada
+                $nama = !empty($namaMesin) ? strtoupper($namaMesin) : "APARATUR ID {$idMesin}";
                 Pegawai::create([
                     'id_mesin' => $idMesin,
                     'nama_lengkap' => $nama,
@@ -228,24 +236,15 @@ class PegawaiController extends Controller
             }
         }
 
-        // Hapus permanen data pegawai di website yang ID Mesin-nya tidak terdaftar di mesin fisik
-        $deletedCount = 0;
-        if (!empty($validMachineIds)) {
-            $obsoletePegawai = Pegawai::withTrashed()->whereNotIn('id_mesin', $validMachineIds)->get();
-            $deletedCount = $obsoletePegawai->count();
-            foreach ($obsoletePegawai as $obsolete) {
-                $obsolete->forceDelete();
-            }
-        }
+        // HAPUS TOTAL LOGIKA forceDelete() AGAR DATA WEBSITE TIDAK PERNAH HILANG!
 
         AuditLogger::log('pull_users_from_machine', null, null, null, [
             'total_from_machine' => count($users),
             'new_created' => $pulledCount,
             'updated' => $updatedCount,
-            'deleted_permanent' => $deletedCount,
         ]);
 
-        return back()->with('success', "Proses Pull & Sinkronisasi Selesai! Data website 100% disesuaikan dengan mesin. (" . count($users) . " aparatur di mesin, {$pulledCount} baru ditambahkan, {$updatedCount} diperbarui, {$deletedCount} data lama dibersihkan permanen)");
+        return back()->with('success', "Proses Tarik Data Selesai! Data biometrik sidik jari & nomor kartu RFID berhasil disinkronkan dengan aman ke website tanpa menghapus data aparatur yang ada. (" . count($users) . " aparatur di mesin, {$pulledCount} aparatur baru terdeteksi, {$updatedCount} data biometrik/kartu diperbarui)");
     }
 
     public function deleteFingerprint(Request $request, $id)

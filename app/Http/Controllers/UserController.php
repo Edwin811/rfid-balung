@@ -5,18 +5,32 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
     public function index()
     {
-        $users = User::orderBy('name')->get();
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+        if ($currentUser->isAdmin()) {
+            $users = User::orderBy('name')->get();
+        } else {
+            $users = User::where('id', $currentUser->id)->get();
+        }
+
         return view('users.index', compact('users'));
     }
 
     public function store(Request $request)
     {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+        if (!$currentUser || !$currentUser->isAdmin()) {
+            abort(403, 'Hanya Administrator yang berhak menambahkan pengguna baru.');
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:50', 'unique:users,username'],
@@ -42,39 +56,94 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $dataLama = $user->toArray();
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
 
-        $request->validate([
+        // Jika bukan admin, hanya boleh edit profil akun sendiri
+        if (!$currentUser->isAdmin() && $currentUser->id !== $user->id) {
+            abort(403, 'Anda hanya berhak mengedit data akun Anda sendiri.');
+        }
+
+        $rules = [
             'name' => ['required', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:50', 'unique:users,username,' . $id],
             'email' => ['nullable', 'email', 'max:100', 'unique:users,email,' . $id],
-            'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['required', 'in:admin,kepala_desa,wakil_kepala_desa,operator'],
-            'is_active' => ['required', 'boolean'],
-        ]);
+        ];
+
+        // Hanya admin yang berhak mengubah role dan status keaktifan akun
+        if ($currentUser->isAdmin()) {
+            $rules['role'] = ['required', 'in:admin,kepala_desa,wakil_kepala_desa,operator'];
+            $rules['is_active'] = ['required', 'boolean'];
+        }
+
+        $request->validate($rules);
+
+        $dataLama = $user->toArray();
 
         $user->name = $request->input('name');
         $user->username = $request->input('username');
         $user->email = $request->input('email');
-        $user->role = $request->input('role');
-        $user->is_active = $request->boolean('is_active');
 
-        if ($request->filled('password')) {
-            $user->password = Hash::make($request->input('password'));
+        if ($currentUser->isAdmin()) {
+            $user->role = $request->input('role');
+            $user->is_active = $request->boolean('is_active');
         }
 
         $user->save();
 
         AuditLogger::log('edit_user', 'User', $user->id, $dataLama, $user->toArray());
 
-        return back()->with('success', 'Akun pengguna berhasil diperbarui.');
+        return back()->with('success', 'Data profil akun pengguna berhasil diperbarui.');
+    }
+
+    public function changePassword(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        // Jika bukan admin, hanya boleh mengganti password akun sendiri
+        if (!$currentUser->isAdmin() && $currentUser->id !== $user->id) {
+            abort(403, 'Anda hanya berhak mengganti password akun Anda sendiri.');
+        }
+
+        $request->validate([
+            'password_lama' => ['required', 'string'],
+            'password_baru' => ['required', 'string', 'min:6', 'confirmed'],
+        ], [
+            'password_lama.required' => 'Password saat ini (lama) wajib diisi.',
+            'password_baru.required' => 'Password baru wajib diisi.',
+            'password_baru.min' => 'Password baru minimal 6 karakter.',
+            'password_baru.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        if (!Hash::check($request->input('password_lama'), $user->password)) {
+            return back()->with('error', 'Gagal mengganti password! Password lama yang Anda masukkan tidak sesuai / salah.');
+        }
+
+        $user->password = Hash::make($request->input('password_baru'));
+        $user->save();
+
+        AuditLogger::log('ganti_password_user', 'User', $user->id, null, [
+            'username' => $user->username,
+            'name' => $user->name,
+            'diubah_oleh' => $currentUser->username ?? 'user'
+        ]);
+
+        return back()->with('success', "Password untuk akun '{$user->name}' berhasil diperbarui dengan aman!");
     }
 
     public function destroy($id)
     {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+        if (!$currentUser || !$currentUser->isAdmin()) {
+            abort(403, 'Hanya Administrator yang berhak menghapus akun pengguna.');
+        }
+
         $user = User::findOrFail($id);
 
-        if ($user->id === \Illuminate\Support\Facades\Auth::id()) {
+        if ($user->id === $currentUser->id) {
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan.');
         }
 

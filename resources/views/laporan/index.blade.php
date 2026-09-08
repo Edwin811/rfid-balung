@@ -248,6 +248,35 @@
             </table>
         </div>
     </div>
+
+    <!-- Keterangan Warna Kolom & Kode Status (Persis Seperti di PDF) -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm">
+        <div class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2.5">
+            Keterangan Warna Kolom &amp; Kode Status:
+        </div>
+        <div class="flex flex-wrap items-center gap-4 text-xs text-slate-700">
+            <div class="flex items-center space-x-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-[#4ade80] border border-slate-300 inline-block flex-shrink-0"></span>
+                <span><strong>HIJAU (OK / OK-OK)</strong>: Hadir Tepat Waktu</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-[#facc15] border border-slate-300 inline-block flex-shrink-0"></span>
+                <span><strong>KUNING (TL1 / PSW)</strong>: Terlambat / Pulang Sebelum Waktu</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-[#38bdf8] border border-slate-300 inline-block flex-shrink-0"></span>
+                <span><strong>BIRU (IT / SK / CT)</strong>: Izin Tidak Masuk / Sakit / Cuti</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-[#f87171] border border-slate-300 inline-block flex-shrink-0"></span>
+                <span><strong>MERAH (TK)</strong>: Tanpa Keterangan / Tidak Hadir</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-[#e2e8f0] border border-slate-300 inline-block flex-shrink-0"></span>
+                <span><strong>ABU-ABU (LIBUR)</strong>: Akhir Pekan (Sabtu &amp; Minggu)</span>
+            </div>
+        </div>
+    </div>
     @else
     <!-- Mode 2 & 3: Rincian Harian & Individu Table -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
