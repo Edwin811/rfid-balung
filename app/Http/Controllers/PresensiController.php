@@ -13,13 +13,6 @@ class PresensiController extends Controller
 {
     public function index(Request $request)
     {
-        // Otomatis tarik log presensi terbaru dari mesin jika terhubung
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // Abai jika mesin offline
-        }
-
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 
@@ -96,12 +89,6 @@ class PresensiController extends Controller
 
     public function harianRealtimeApi(Request $request)
     {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // ignore if device offline
-        }
-
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 

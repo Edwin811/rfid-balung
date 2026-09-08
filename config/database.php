@@ -60,10 +60,10 @@ return [
             'strict' => true,
             'engine' => null,
             'timezone' => env('DB_TIMEZONE', '+07:00'),
-            'options' => extension_loaded('pdo_mysql') ? [
-                \PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA', true),
-                \PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => (bool) env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT', false),
-            ] : [],
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                \PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                \PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT', false),
+            ]) : [],
         ],
 
         'mariadb' => [

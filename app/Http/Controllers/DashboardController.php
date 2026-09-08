@@ -13,12 +13,6 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // ignore if device offline
-        }
-
         $today = Carbon::today()->toDateString();
         $totalPegawai = Pegawai::where('is_active', true)->count();
 
@@ -99,12 +93,6 @@ class DashboardController extends Controller
 
     public function realtimeApi(): JsonResponse
     {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-        } catch (\Throwable $e) {
-            // ignore if device offline
-        }
-
         $today = Carbon::today()->toDateString();
         $totalPegawai = Pegawai::where('is_active', true)->count();
 
@@ -174,6 +162,15 @@ class DashboardController extends Controller
 
     private function get7DayChartData(): array
     {
+        $startDate = Carbon::today()->subDays(6)->toDateString();
+        $endDate = Carbon::today()->toDateString();
+
+        // 1 single query for the 7-day window instead of 7 separate queries
+        $allRecords = Presensi::whereDate('tanggal', '>=', $startDate)
+            ->whereDate('tanggal', '<=', $endDate)
+            ->get()
+            ->groupBy(fn($item) => Carbon::parse($item->tanggal)->toDateString());
+
         $dates = [];
         $hadir = [];
         $terlambat = [];
@@ -184,10 +181,10 @@ class DashboardController extends Controller
             $dateStr = $dt->toDateString();
             $dates[] = $dt->format('d M');
 
-            $records = Presensi::whereDate('tanggal', $dateStr)->get();
-            $hadir[] = $records->where('status', 'hadir')->count();
-            $terlambat[] = $records->where('status', 'terlambat')->count();
-            $izin[] = $records->whereIn('status', ['sakit', 'izin', 'dispen'])->count();
+            $dayRecords = $allRecords->get($dateStr, collect());
+            $hadir[] = $dayRecords->where('status', 'hadir')->count();
+            $terlambat[] = $dayRecords->where('status', 'terlambat')->count();
+            $izin[] = $dayRecords->whereIn('status', ['sakit', 'izin', 'dispen'])->count();
         }
 
         return [
