@@ -45,21 +45,31 @@
             </button>
         </form>
 
-        <!-- Status Konektivitas Mesin -->
-        <div class="flex items-center space-x-2 text-xs font-medium px-3.5 py-2 rounded-xl border transition-all duration-300 shadow-sm flex-shrink-0 self-start sm:self-auto"
-            :class="deviceOnline ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'">
-            <span class="relative flex h-2.5 w-2.5">
-                <span x-show="deviceOnline" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="deviceOnline ? 'bg-emerald-500' : 'bg-slate-400'"></span>
-            </span>
-            <span class="font-semibold" x-text="deviceOnline ? 'Terhubung' : 'Tidak Terhubung'">
-                {{ $isDeviceOnline ? 'Terhubung' : 'Tidak Terhubung' }}
-            </span>
-            <span class="text-[11px] font-mono pl-1.5 border-l"
-                  :class="deviceOnline ? 'border-emerald-300 text-emerald-700' : 'border-slate-300 text-slate-400'"
-                  x-text="deviceOnline ? lastUpdated : '--:--:--'">
-                {{ $isDeviceOnline ? date('H:i:s') : '--:--:--' }}
-            </span>
+        <div class="flex items-center space-x-2.5 flex-shrink-0 self-start sm:self-auto">
+            <!-- Tombol Tarik Data Mesin -->
+            <a href="{{ route('presensi.sync_now') }}"
+               class="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition shadow-sm"
+               title="Tarik data presensi dari memori mesin biometrik & RFID ZKTeco">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Tarik dari Mesin</span>
+            </a>
+
+            <!-- Status Konektivitas Mesin -->
+            <div class="flex items-center space-x-2 text-xs font-medium px-3.5 py-2 rounded-xl border transition-all duration-300 shadow-sm"
+                :class="deviceOnline ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span x-show="deviceOnline" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="deviceOnline ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+                </span>
+                <span class="font-semibold" x-text="deviceOnline ? 'Terhubung' : 'Tidak Terhubung'">
+                    {{ $isDeviceOnline ? 'Terhubung' : 'Tidak Terhubung' }}
+                </span>
+                <span class="text-[11px] font-mono pl-1.5 border-l"
+                      :class="deviceOnline ? 'border-emerald-300 text-emerald-700' : 'border-slate-300 text-slate-400'"
+                      x-text="deviceOnline ? lastUpdated : '--:--:--'">
+                    {{ $isDeviceOnline ? date('H:i:s') : '--:--:--' }}
+                </span>
+            </div>
         </div>
     </div>
 

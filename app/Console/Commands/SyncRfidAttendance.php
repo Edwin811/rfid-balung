@@ -14,13 +14,7 @@ class SyncRfidAttendance extends Command
 
     public function handle(AttendanceService $attendanceService)
     {
-        if (!AttendanceService::isDeviceOnline()) {
-            $this->warn('ZKTeco RFID device is offline/unplugged. Skipping hardware socket fetch.');
-            $processedCount = $attendanceService->processUnprocessedDeviceLogs();
-            return 0;
-        }
-
-        $this->info('Starting attendance sync from ZKTeco RFID machine...');
+        $this->info('Memulai sinkronisasi data presensi dari mesin biometrik & RFID ZKTeco...');
         
         $pythonScript = base_path('scripts/fetch_presensi.py');
         $pythonBin = env('PYTHON_BIN', 'python');
@@ -29,19 +23,25 @@ class SyncRfidAttendance extends Command
         $rawOutput = shell_exec($command);
 
         if (!$rawOutput) {
-            $this->error('Failed to execute python fetch script.');
-            return 1;
+            $this->warn('Gagal mengeksekusi skrip python fetch_presensi.py.');
+            $processedCount = $attendanceService->processUnprocessedDeviceLogs();
+            return 0;
         }
 
         $result = json_decode($rawOutput, true);
 
         if (!$result || ($result['status'] ?? '') !== 'success') {
-            $this->error('Failed to fetch data from machine: ' . ($result['message'] ?? $rawOutput));
-            return 1;
+            $msg = $result['message'] ?? trim($rawOutput);
+            $this->warn("Mesin ZKTeco saat ini belum terhubung / mati ({$msg}). Memproses data lokal yang tersimpan...");
+            $processedCount = $attendanceService->processUnprocessedDeviceLogs();
+            if ($processedCount > 0) {
+                $this->info("Berhasil memproses {$processedCount} log antrean ke presensi.");
+            }
+            return 0;
         }
 
         $logs = $result['data'] ?? [];
-        $this->info("Successfully fetched " . count($logs) . " records from machine.");
+        $this->info("Berhasil mengambil " . count($logs) . " rekaman presensi dari memori mesin.");
 
         $importedCount = 0;
         foreach ($logs as $log) {

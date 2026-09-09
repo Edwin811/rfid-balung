@@ -84,7 +84,8 @@ class PresensiController extends Controller
     {
         try {
             \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-            return redirect()->back(fallback: route('presensi.index'))->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
+            $output = trim(\Illuminate\Support\Facades\Artisan::output());
+            return redirect()->back(fallback: route('presensi.index'))->with('success', 'Sinkronisasi mesin selesai! ' . $output);
         } catch (\Throwable $e) {
             return redirect()->back(fallback: route('presensi.index'))->with('error', 'Gagal menarik data dari mesin: ' . $e->getMessage());
         }
@@ -94,6 +95,17 @@ class PresensiController extends Controller
     {
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
+
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
+
+        // Auto-sync cerdas: Jika mesin online dan belum sync dalam 30 detik terakhir, tarik data otomatis
+        if ($isDeviceOnline && \Illuminate\Support\Facades\Cache::add('auto_rfid_sync_throttle', true, 30)) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+            } catch (\Throwable $e) {
+                // Abaikan error agar respon realtime tetap instan
+            }
+        }
 
         $query = Presensi::with('pegawai', 'updatedBy')
             ->whereDate('tanggal', $tanggal)

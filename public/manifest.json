@@ -1,0 +1,17 @@
+{
+  "name": "Sistem Presensi Desa Balunglor",
+  "short_name": "Presensi Balunglor",
+  "description": "Sistem Presensi Biometrik & RFID Aparatur Pemerintah Desa Balunglor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#be123c",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

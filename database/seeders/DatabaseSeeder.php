@@ -78,7 +78,5 @@ class DatabaseSeeder extends Seeder
         foreach ($aparatur as $pegawaiData) {
             Pegawai::create(array_merge($pegawaiData, ['is_active' => true]));
         }
-
-        $this->call(DummyPresensiHariIniSeeder::class);
     }
 }

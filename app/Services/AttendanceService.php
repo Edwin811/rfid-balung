@@ -12,20 +12,33 @@ use Illuminate\Support\Facades\Log;
 class AttendanceService
 {
     /**
-     * Fast 200ms socket availability check with 10s caching
-     * Mencegah website lemot saat mesin fisik ZKTeco tidak dicolokkan (unplugged/offline).
+     * Fast availability check with 4s caching
+     * Mendukung deteksi mesin baik via ICMP ping maupun TCP/UDP socket.
      */
     public static function isDeviceOnline(): bool
     {
-        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 10, function () {
-            $ip = env('ZKT_IP', '169.254.176.250');
+        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 4, function () {
+            $ip = env('ZKT_IP', '192.168.1.23');
             $port = intval(env('ZKT_PORT', 4370));
-            
-            $fp = @fsockopen($ip, $port, $errno, $errstr, 0.2);
+
+            // 1. Coba ping cepat (200ms) - cocok untuk mesin dengan protokol UDP
+            if (PHP_OS_FAMILY === 'Windows') {
+                $pingCmd = "ping -n 1 -w 200 " . escapeshellarg($ip);
+            } else {
+                $pingCmd = "ping -c 1 -W 1 " . escapeshellarg($ip);
+            }
+            @exec($pingCmd, $output, $resultCode);
+            if ($resultCode === 0) {
+                return true;
+            }
+
+            // 2. Coba TCP socket (300ms) - cocok untuk mesin dengan protokol TCP
+            $fp = @fsockopen($ip, $port, $errno, $errstr, 0.3);
             if ($fp) {
                 fclose($fp);
                 return true;
             }
+
             return false;
         });
     }

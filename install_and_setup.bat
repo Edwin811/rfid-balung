@@ -165,28 +165,99 @@ echo       [OK] APP_KEY berhasil di-generate.
 echo.
 
 :: ============================================================
-:: TAHAP 5: MIGRASI DATABASE
+:: TAHAP 5: PERSIAPAN DATABASE DAN MIGRASI
 :: ============================================================
-echo [5/7] Menyiapkan tabel database dan data aparatur desa...
-call php artisan migrate:fresh --seed --force >nul 2>&1
-if %errorLevel% eq 0 (
-    echo       [OK] Database berhasil disiapkan dengan 15 data aparatur desa.
+echo [5/8] Menyiapkan database MySQL dan data aparatur desa...
+
+:: 1. Pastikan Service MySQL Berjalan
+powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if (!$c) { exit 1 }" >nul 2>&1
+if %errorLevel% neq 0 (
+    echo       [*] Mengaktifkan database MySQL lokal...
+    net start mysql >nul 2>&1
+    if %errorLevel% neq 0 (
+        for /d %%D in (C:\laragon\bin\mysql\mysql-*) do (
+            if exist "%%D\bin\mysqld.exe" (
+                if exist "%%D\my.ini" (
+                    start "" /B "%%D\bin\mysqld.exe" --defaults-file="%%D\my.ini" >nul 2>&1
+                ) else (
+                    start "" /B "%%D\bin\mysqld.exe" --console >nul 2>&1
+                )
+            )
+        )
+    )
+    powershell -Command "Start-Sleep -Milliseconds 2500" >nul 2>&1
+)
+
+:: 2. Buat Database rfid_balung jika belum ada
+php -r "$p=new PDO('mysql:host=127.0.0.1;port=3306','root',''); $p->exec('CREATE DATABASE IF NOT EXISTS \`rfid_balung\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;');" >nul 2>&1
+
+:: 3. Cek apakah tabel sudah ada (mencegah data lama terhapus jika dijalankan ulang)
+php -r "$p=new PDO('mysql:host=127.0.0.1;port=3306;dbname=rfid_balung','root',''); $s=$p->query('SHOW TABLES LIKE \'users\''); exit($s->rowCount() > 0 ? 0 : 1);" >nul 2>&1
+if %errorLevel% neq 0 (
+    echo       [*] Database baru terdeteksi. Mengisi skema awal dan 15 data aparatur...
+    call php artisan migrate:fresh --seed --force >nul 2>&1
+    if %errorLevel% eq 0 (
+        echo       [OK] Database berhasil dibuat dengan 15 data aparatur desa!
+    ) else (
+        echo       [NOTE] Migrasi database dicoba ulang...
+        call php artisan migrate --force >nul 2>&1
+    )
 ) else (
-    echo       [NOTE] Migrasi database dilewati. Database cloud mungkin sudah terisi.
+    echo       [OK] Database sudah memiliki data sebelumnya. Menjalankan update migrasi aman...
+    call php artisan migrate --force >nul 2>&1
+)
+
+:: 4. Buat Storage Link
+call php artisan storage:link >nul 2>&1
+echo.
+
+:: ============================================================
+:: TAHAP 6: INTEGRASI MESIN RFID (PYTHON & PYZK)
+:: ============================================================
+echo [6/8] Memeriksa integrasi pustaka mesin RFID (Python & PyZK)...
+where python >nul 2>&1
+if %errorLevel% neq 0 (
+    for /d %%P in (C:\laragon\bin\python\*) do (
+        if exist "%%P\python.exe" (
+            set "PATH=%%P;%%P\Scripts;%PATH%"
+        )
+    )
+)
+
+where python >nul 2>&1
+if %errorLevel% eq 0 (
+    python -c "import zk" >nul 2>&1
+    if %errorLevel% neq 0 (
+        echo       [*] Memasang library pyzk & requests untuk komunikasi mesin fisik ZKTeco...
+        pip install pyzk requests >nul 2>&1
+        python -c "import zk" >nul 2>&1
+        if %errorLevel% eq 0 (
+            echo       [OK] Library pyzk & requests berhasil dipasang!
+        ) else (
+            echo       [NOTE] Library pyzk belum terpasang otomatis. Anda bisa jalankan: pip install pyzk requests
+        )
+    ) else (
+        echo       [OK] Python dan library pyzk siap digunakan.
+    )
+) else (
+    echo       [NOTE] Python belum terdeteksi di komputer ini.
+    echo              Untuk komunikasi otomatis ke mesin ZKTeco via kabel LAN,
+    echo              silakan pasang Python melalui:
+    echo              - Menu Laragon: Klik kanan Laragon -> Tools -> Quick add -> Python
+    echo              - ATAU download dari: https://www.python.org/downloads/ (centang Add to PATH)
 )
 echo.
 
 :: ============================================================
-:: TAHAP 6: DAFTARKAN DOMAIN LOKAL DESA
+:: TAHAP 7: DAFTARKAN DOMAIN LOKAL DESA & SSL HTTPS
 :: ============================================================
-echo [6/7] Mendaftarkan domain lokal presensi.balunglor.desa.id...
+echo [7/8] Mendaftarkan domain presensi.balunglor.desa.id & SSL...
 
 set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
 findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
 if %errorLevel% eq 0 (
-    echo       [OK] Domain sudah terdaftar sebelumnya.
+    echo       [OK] Domain sudah terdaftar di Windows hosts.
 ) else (
-    :: Coba tulis langsung (jika sudah admin)
     net session >nul 2>&1
     if %errorLevel% eq 0 (
         echo. >> "%HOSTS_FILE%"
@@ -194,26 +265,35 @@ if %errorLevel% eq 0 (
         echo 127.0.0.1    presensi.local >> "%HOSTS_FILE%"
         echo       [OK] Domain berhasil didaftarkan!
     ) else (
-        echo       [*] Memerlukan izin Administrator untuk mendaftarkan domain...
+        echo       [*] Meminta izin Administrator untuk mendaftarkan domain...
         powershell -Command "Start-Process cmd.exe -ArgumentList '/c echo. >> \"%HOSTS_FILE%\" & echo 127.0.0.1    presensi.balunglor.desa.id >> \"%HOSTS_FILE%\" & echo 127.0.0.1    presensi.local >> \"%HOSTS_FILE%\"' -Verb RunAs -Wait" >nul 2>&1
         findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
         if %errorLevel% eq 0 (
             echo       [OK] Domain berhasil didaftarkan!
         ) else (
-            echo       [NOTE] Domain gagal didaftarkan otomatis.
-            echo       Anda tetap bisa mengakses via http://localhost:8000
+            echo       [NOTE] Domain gagal didaftarkan otomatis. Akses via http://localhost:8000
         )
     )
 )
+
+:: Pasang SSL otomatis jika ada setup_ssl.bat
+if exist "%~dp0setup_ssl.bat" (
+    echo       [*] Mengonfigurasi VirtualHost Apache & Sertifikat SSL...
+    powershell -Command "Start-Process cmd.exe -ArgumentList '/c `\"\"%~dp0setup_ssl.bat\"`\"' -Verb RunAs -Wait" >nul 2>&1
+    echo       [OK] Konfigurasi SSL berhasil dipasang.
+)
+
+:: Buka Firewall Windows untuk akses HP/Laptop lain di Wi-Fi kantor desa
+netsh advfirewall firewall add rule name="Presensi Balunglor Web Server" dir=in action=allow protocol=TCP localport=80,443,8000 >nul 2>&1
 echo.
 
 :: ============================================================
-:: TAHAP 7: PASANG AUTO-START
+:: TAHAP 8: PASANG AUTO-START WINDOWS
 :: ============================================================
-echo [7/7] Memasang Auto-Start Windows...
+echo [8/8] Memasang Auto-Start Windows...
 echo.
 echo       Apakah Anda ingin aplikasi ini OTOMATIS MENYALA
-echo       setiap kali komputer dihidupkan? (DISARANKAN)
+echo       setiap kali komputer dihidupkan? (SANGAT DISARANKAN UNTUK PC DESA)
 echo.
 set /p autostart_choice="       Pasang Auto-Start? (Y/N): "
 
@@ -223,8 +303,8 @@ if /i "%autostart_choice%"=="Y" (
     )
     echo.
     echo       [OK] Auto-Start berhasil dipasang!
-    echo       Setiap kali komputer dinyalakan, server presensi
-    echo       akan otomatis aktif di background.
+    echo       Setiap kali PC desa dinyalakan, server presensi
+    echo       akan otomatis aktif di background tanpa perlu buka aplikasi lain.
 ) else (
     echo       [OK] Auto-Start dilewati. Anda bisa klik run_background.vbs kapan saja.
 )
@@ -237,18 +317,29 @@ echo ================================================================
 echo   INSTALASI SELESAI 100%% BERHASIL!
 echo ================================================================
 echo.
-echo   Alamat Akses:
+echo   Alamat Akses Resmi:
+echo   - https://presensi.balunglor.desa.id  (Aman dengan Gembok SSL)
 echo   - http://presensi.balunglor.desa.id:8000
 echo   - http://localhost:8000
 echo.
-echo   Akun Login:
-echo   - Username: admin
-echo   - Password: password
+echo   Akun Pengguna Default:
+echo   1. Administrator:
+echo      Username : admin
+echo      Password : password123
+echo   2. Kepala Desa:
+echo      Username : kades
+echo      Password : password123
+echo   3. Sekretaris Desa:
+echo      Username : wakilkades
+echo      Password : password123
+echo   4. Operator Presensi:
+echo      Username : operator
+echo      Password : password123
 echo.
 echo   File Penting:
-echo   - run_background.vbs  = Nyalakan server (1 klik)
+echo   - run_background.vbs  = Nyalakan server secara senyap (1 klik)
 echo   - stop_app.bat        = Matikan server
-echo   - start_app.bat       = Nyalakan server (dengan jendela)
+echo   - start_app.bat       = Nyalakan server dengan jendela log
 echo.
 echo ================================================================
 echo.
@@ -258,7 +349,7 @@ set /p start_now="  Buka aplikasi sekarang? (Y/N): "
 if /i "%start_now%"=="Y" (
     echo.
     echo  [*] Memulai server dan membuka browser...
-    start "" "http://presensi.balunglor.desa.id:8000"
+    start "" "https://presensi.balunglor.desa.id"
     start "" wscript.exe "%~dp0run_background.vbs"
 )
 

@@ -57,10 +57,15 @@ php artisan route:cache >nul 2>&1
 php artisan view:cache >nul 2>&1
 
 :: 4. Cari dan Jalankan Apache Laragon dengan SSL
-set "APACHE_DIR=C:\laragon\bin\apache\httpd-2.4.54-win64-VS16"
-set "APACHE_EXE=%APACHE_DIR%\bin\httpd.exe"
+set "APACHE_DIR="
+for /d %%A in (C:\laragon\bin\apache\httpd-*) do (
+    if exist "%%A\bin\httpd.exe" (
+        set "APACHE_DIR=%%A"
+    )
+)
 
-if not exist "%APACHE_EXE%" goto RUN_PHP_FALLBACK
+if not defined APACHE_DIR goto RUN_PHP_FALLBACK
+set "APACHE_EXE=%APACHE_DIR%\bin\httpd.exe"
 
 :: Pastikan nghttp2.dll di Apache sinkron dengan PHP agar tidak terjadi error DLL Entry Point Not Found
 for /d %%P in (C:\laragon\bin\php\php-*) do (
@@ -78,6 +83,9 @@ echo  - https://presensi.balunglor.desa.id  (Aman dengan Gembok SSL)
 echo  - http://presensi.balunglor.desa.id:8000
 echo  - http://localhost:8000
 echo ===============================================================
+echo [*] Memulai Layanan Auto-Sync Mesin ZKTeco di background...
+wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
+
 echo.
 echo Server sedang berjalan...
 echo (Jangan tutup jendela ini agar website tetap aktif)
@@ -88,5 +96,6 @@ exit /b
 
 :RUN_PHP_FALLBACK
 echo [NOTE] Apache Laragon tidak ditemukan. Menjalankan PHP Built-in Server...
+wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
 set PHP_CLI_SERVER_WORKERS=4
 php -S 0.0.0.0:8000 -t public
