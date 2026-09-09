@@ -210,7 +210,7 @@ echo.
 :: ============================================================
 :: TAHAP 6: INTEGRASI MESIN RFID (PYTHON & PYZK)
 :: ============================================================
-echo [6/8] Memeriksa integrasi pustaka mesin RFID (Python & PyZK)...
+echo [6/8] Memeriksa integrasi pustaka mesin RFID (Python dan PyZK)...
 where python >nul 2>&1
 if not "%errorLevel%"=="0" (
     for /d %%P in (C:\laragon\bin\python\*) do (
@@ -224,11 +224,11 @@ where python >nul 2>&1
 if "%errorLevel%"=="0" (
     python -c "import zk" >nul 2>&1
     if not "%errorLevel%"=="0" (
-        echo       [*] Memasang library pyzk & requests untuk komunikasi mesin fisik ZKTeco...
+        echo       [*] Memasang library pyzk dan requests untuk komunikasi mesin fisik ZKTeco...
         pip install pyzk requests >nul 2>&1
         python -c "import zk" >nul 2>&1
         if "%errorLevel%"=="0" (
-            echo       [OK] Library pyzk & requests berhasil dipasang!
+            echo       [OK] Library pyzk dan requests berhasil dipasang!
         ) else (
             echo       [NOTE] Library pyzk belum terpasang otomatis. Anda bisa jalankan: pip install pyzk requests
         )
@@ -247,7 +247,7 @@ echo.
 :: ============================================================
 :: TAHAP 7: DAFTARKAN DOMAIN LOKAL DESA & SSL HTTPS
 :: ============================================================
-echo [7/8] Mendaftarkan domain presensi.balunglor.desa.id & SSL...
+echo [7/8] Mendaftarkan domain presensi.balunglor.desa.id dan SSL...
 
 set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
 findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
@@ -274,7 +274,7 @@ if "%errorLevel%"=="0" (
 
 :: Pasang SSL otomatis jika ada setup_ssl.bat
 if exist "%~dp0setup_ssl.bat" (
-    echo       [*] Mengonfigurasi VirtualHost Apache & Sertifikat SSL...
+    echo       [*] Mengonfigurasi VirtualHost Apache dan Sertifikat SSL...
     powershell -Command "Start-Process cmd.exe -ArgumentList '/c `\"\"%~dp0setup_ssl.bat\"`\"' -Verb RunAs -Wait" >nul 2>&1
     echo       [OK] Konfigurasi SSL berhasil dipasang.
 )

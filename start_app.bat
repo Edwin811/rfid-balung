@@ -92,10 +92,17 @@ echo (Jangan tutup jendela ini agar website tetap aktif)
 echo (Untuk mematikan server, Anda bisa menutup jendela ini atau jalankan stop_app.bat)
 echo.
 "%APACHE_EXE%" -d "%APACHE_DIR%"
-exit /b
+echo [NOTE] Apache terhenti. Mencoba menyalakan server PHP built-in...
 
 :RUN_PHP_FALLBACK
-echo [NOTE] Apache Laragon tidak ditemukan. Menjalankan PHP Built-in Server...
+echo [NOTE] Menjalankan PHP Built-in Server...
 wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
-set PHP_CLI_SERVER_WORKERS=4
-php -S 0.0.0.0:8000 -t public
+php artisan serve --host=0.0.0.0 --port=8000
+if not "%errorLevel%"=="0" (
+    echo [NOTE] Menjalankan php built-in server fallback...
+    set PHP_CLI_SERVER_WORKERS=4
+    php -S 0.0.0.0:8000 -t public
+)
+echo.
+echo Server terhenti.
+pause
