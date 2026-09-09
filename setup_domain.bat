@@ -12,14 +12,14 @@ set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
 
 :: Check for Administrative Privileges
 net session >nul 2>&1
-if %errorLevel% neq 0 (
+if not "%errorLevel%"=="0" (
     echo [NOTE] Meminta izin Administrator Windows...
     powershell -Command "Start-Process cmd.exe -ArgumentList '/k `\"\"%~f0\"`\"' -Verb RunAs"
     exit /b
 )
 
 findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
-if %errorLevel% equ 0 (
+if "%errorLevel%"=="0" (
     echo [OK] Domain http://presensi.balunglor.desa.id SUDAH TERPASANG di Windows Hosts!
 ) else (
     echo. >> "%HOSTS_FILE%"

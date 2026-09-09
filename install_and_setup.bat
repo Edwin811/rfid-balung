@@ -17,7 +17,7 @@ echo.
 echo [1/7] Mencari PHP di komputer Anda...
 
 where php >nul 2>&1
-if %errorLevel% equ 0 (
+if "%errorLevel%"=="0" (
     echo       [OK] PHP ditemukan di PATH sistem.
     goto PHP_READY
 )
@@ -69,7 +69,7 @@ if exist "%PHPINI%" (
 :PHP_READY
 :: Verifikasi PHP bisa jalan
 php -v >nul 2>&1
-if %errorLevel% neq 0 (
+if not "%errorLevel%"=="0" (
     echo       [ERROR] PHP ditemukan tapi gagal dijalankan.
     pause
     exit /b 1
@@ -91,7 +91,7 @@ echo       [*] Pustaka vendor belum ada. Memulai pengunduhan...
 
 :: Cek apakah composer tersedia di sistem
 where composer >nul 2>&1
-if %errorLevel% equ 0 (
+if "%errorLevel%"=="0" (
     echo       [*] Menjalankan: composer install...
     call composer install --no-interaction --prefer-dist --ignore-platform-reqs
     goto CHECK_VENDOR
@@ -167,7 +167,7 @@ echo [5/8] Menyiapkan database MySQL dan data aparatur desa...
 
 :: 1. Pastikan Service MySQL Berjalan
 powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if (!$c) { exit 1 }" >nul 2>&1
-if %errorLevel% neq 0 (
+if not "%errorLevel%"=="0" (
     echo       [*] Mengaktifkan database MySQL lokal...
     net start mysql >nul 2>&1
         for %%L in (C D E) do (
@@ -189,10 +189,10 @@ php -r "$p=new PDO('mysql:host=127.0.0.1;port=3306','root',''); $p->exec('CREATE
 
 :: 3. Cek apakah tabel sudah ada (mencegah data lama terhapus jika dijalankan ulang)
 php -r "$p=new PDO('mysql:host=127.0.0.1;port=3306;dbname=rfid_balung','root',''); $s=$p->query('SHOW TABLES LIKE \'users\''); exit($s->rowCount() > 0 ? 0 : 1);" >nul 2>&1
-if %errorLevel% neq 0 (
+if not "%errorLevel%"=="0" (
     echo       [*] Database baru terdeteksi. Mengisi skema awal dan 15 data aparatur...
     call php artisan migrate:fresh --seed --force >nul 2>&1
-    if %errorLevel% equ 0 (
+    if "%errorLevel%"=="0" (
         echo       [OK] Database berhasil dibuat dengan 15 data aparatur desa!
     ) else (
         echo       [NOTE] Migrasi database dicoba ulang...
@@ -212,7 +212,7 @@ echo.
 :: ============================================================
 echo [6/8] Memeriksa integrasi pustaka mesin RFID (Python & PyZK)...
 where python >nul 2>&1
-if %errorLevel% neq 0 (
+if not "%errorLevel%"=="0" (
     for /d %%P in (C:\laragon\bin\python\*) do (
         if exist "%%P\python.exe" (
             set "PATH=%%P;%%P\Scripts;%PATH%"
@@ -221,13 +221,13 @@ if %errorLevel% neq 0 (
 )
 
 where python >nul 2>&1
-if %errorLevel% equ 0 (
+if "%errorLevel%"=="0" (
     python -c "import zk" >nul 2>&1
-    if %errorLevel% neq 0 (
+    if not "%errorLevel%"=="0" (
         echo       [*] Memasang library pyzk & requests untuk komunikasi mesin fisik ZKTeco...
         pip install pyzk requests >nul 2>&1
         python -c "import zk" >nul 2>&1
-        if %errorLevel% equ 0 (
+        if "%errorLevel%"=="0" (
             echo       [OK] Library pyzk & requests berhasil dipasang!
         ) else (
             echo       [NOTE] Library pyzk belum terpasang otomatis. Anda bisa jalankan: pip install pyzk requests
@@ -251,11 +251,11 @@ echo [7/8] Mendaftarkan domain presensi.balunglor.desa.id & SSL...
 
 set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
 findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
-if %errorLevel% equ 0 (
+if "%errorLevel%"=="0" (
     echo       [OK] Domain sudah terdaftar di Windows hosts.
 ) else (
     net session >nul 2>&1
-    if %errorLevel% equ 0 (
+    if "%errorLevel%"=="0" (
         echo. >> "%HOSTS_FILE%"
         echo 127.0.0.1    presensi.balunglor.desa.id >> "%HOSTS_FILE%"
         echo 127.0.0.1    presensi.local >> "%HOSTS_FILE%"
@@ -264,7 +264,7 @@ if %errorLevel% equ 0 (
         echo       [*] Meminta izin Administrator untuk mendaftarkan domain...
         powershell -Command "Start-Process cmd.exe -ArgumentList '/c echo. >> \"%HOSTS_FILE%\" & echo 127.0.0.1    presensi.balunglor.desa.id >> \"%HOSTS_FILE%\" & echo 127.0.0.1    presensi.local >> \"%HOSTS_FILE%\"' -Verb RunAs -Wait" >nul 2>&1
         findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
-        if %errorLevel% equ 0 (
+        if "%errorLevel%"=="0" (
             echo       [OK] Domain berhasil didaftarkan!
         ) else (
             echo       [NOTE] Domain gagal didaftarkan otomatis. Akses via http://localhost:8000

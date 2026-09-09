@@ -102,7 +102,7 @@ if defined APACHE_DIR (
     echo [*] Mendaftarkan Apache sebagai Windows Service (Auto-Start Background)...
     "%APACHE_EXE%" -k install -n "LaragonApache" >nul 2>&1
     net start LaragonApache >nul 2>&1
-    if %errorLevel% equ 0 (
+    if "%errorLevel%"=="0" (
         echo [OK] Service Apache berhasil dinyalakan!
     ) else (
         echo [*] Menjalankan Apache secara background process...
