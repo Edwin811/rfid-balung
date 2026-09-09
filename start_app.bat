@@ -62,6 +62,13 @@ set "APACHE_EXE=%APACHE_DIR%\bin\httpd.exe"
 
 if not exist "%APACHE_EXE%" goto RUN_PHP_FALLBACK
 
+:: Pastikan nghttp2.dll di Apache sinkron dengan PHP agar tidak terjadi error DLL Entry Point Not Found
+for /d %%P in (C:\laragon\bin\php\php-*) do (
+    if exist "%%P\nghttp2.dll" (
+        copy /y "%%P\nghttp2.dll" "%APACHE_DIR%\bin\nghttp2.dll" >nul 2>&1
+    )
+)
+
 echo.
 echo ===============================================================
 echo [OK] Web Server Apache (HTTPS dan HTTP) BERHASIL DIAKTIFKAN!
