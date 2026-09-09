@@ -19,7 +19,7 @@ if %errorLevel% neq 0 (
 )
 
 findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
-if %errorLevel% eq 0 (
+if %errorLevel% equ 0 (
     echo [OK] Domain http://presensi.balunglor.desa.id SUDAH TERPASANG di Windows Hosts!
 ) else (
     echo. >> "%HOSTS_FILE%"

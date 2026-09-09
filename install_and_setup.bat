@@ -17,32 +17,28 @@ echo.
 echo [1/7] Mencari PHP di komputer Anda...
 
 where php >nul 2>&1
-if %errorLevel% eq 0 (
+if %errorLevel% equ 0 (
     echo       [OK] PHP ditemukan di PATH sistem.
     goto PHP_READY
 )
 
-:: Cari di XAMPP
-if exist "C:\xampp\php\php.exe" (
-    set "PATH=C:\xampp\php;%PATH%"
-    echo       [OK] PHP ditemukan di: C:\xampp\php
-
-    :: Auto-fix XAMPP path error (xampp_ menjadi xampp)
-    if exist "C:\xampp\setup_xampp.bat" (
-        echo       [*] Memperbaiki konfigurasi path XAMPP...
-        pushd C:\xampp
-        call setup_xampp.bat >nul 2>&1
-        popd
+:: Cari di XAMPP (Drive C, D, E)
+for %%L in (C D E) do (
+    if exist "%%L:\xampp\php\php.exe" (
+        set "PATH=%%L:\xampp\php;!PATH!"
+        echo       [OK] PHP ditemukan di: %%L:\xampp\php
+        goto PHP_FIX_EXTENSIONS
     )
-    goto PHP_FIX_EXTENSIONS
 )
 
-:: Cari di Laragon
-for /d %%D in (C:\laragon\bin\php\php-*) do (
-    if exist "%%D\php.exe" (
-        set "PATH=%%D;%PATH%"
-        echo       [OK] PHP ditemukan di: %%D
-        goto PHP_READY
+:: Cari di Laragon (Drive C, D, E)
+for %%L in (C D E) do (
+    for /d %%D in (%%L:\laragon\bin\php\php-*) do (
+        if exist "%%D\php.exe" (
+            set "PATH=%%D;!PATH!"
+            echo       [OK] PHP ditemukan di: %%D
+            goto PHP_READY
+        )
     )
 )
 
@@ -95,7 +91,7 @@ echo       [*] Pustaka vendor belum ada. Memulai pengunduhan...
 
 :: Cek apakah composer tersedia di sistem
 where composer >nul 2>&1
-if %errorLevel% eq 0 (
+if %errorLevel% equ 0 (
     echo       [*] Menjalankan: composer install...
     call composer install --no-interaction --prefer-dist --ignore-platform-reqs
     goto CHECK_VENDOR
@@ -174,17 +170,17 @@ powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 
 if %errorLevel% neq 0 (
     echo       [*] Mengaktifkan database MySQL lokal...
     net start mysql >nul 2>&1
-    if %errorLevel% neq 0 (
-        for /d %%D in (C:\laragon\bin\mysql\mysql-*) do (
-            if exist "%%D\bin\mysqld.exe" (
-                if exist "%%D\my.ini" (
-                    start "" /B "%%D\bin\mysqld.exe" --defaults-file="%%D\my.ini" >nul 2>&1
-                ) else (
-                    start "" /B "%%D\bin\mysqld.exe" --console >nul 2>&1
+        for %%L in (C D E) do (
+            for /d %%D in (%%L:\laragon\bin\mysql\mysql-*) do (
+                if exist "%%D\bin\mysqld.exe" (
+                    if exist "%%D\my.ini" (
+                        start "" /B "%%D\bin\mysqld.exe" --defaults-file="%%D\my.ini" >nul 2>&1
+                    ) else (
+                        start "" /B "%%D\bin\mysqld.exe" --console >nul 2>&1
+                    )
                 )
             )
         )
-    )
     powershell -Command "Start-Sleep -Milliseconds 2500" >nul 2>&1
 )
 
@@ -196,7 +192,7 @@ php -r "$p=new PDO('mysql:host=127.0.0.1;port=3306;dbname=rfid_balung','root',''
 if %errorLevel% neq 0 (
     echo       [*] Database baru terdeteksi. Mengisi skema awal dan 15 data aparatur...
     call php artisan migrate:fresh --seed --force >nul 2>&1
-    if %errorLevel% eq 0 (
+    if %errorLevel% equ 0 (
         echo       [OK] Database berhasil dibuat dengan 15 data aparatur desa!
     ) else (
         echo       [NOTE] Migrasi database dicoba ulang...
@@ -225,13 +221,13 @@ if %errorLevel% neq 0 (
 )
 
 where python >nul 2>&1
-if %errorLevel% eq 0 (
+if %errorLevel% equ 0 (
     python -c "import zk" >nul 2>&1
     if %errorLevel% neq 0 (
         echo       [*] Memasang library pyzk & requests untuk komunikasi mesin fisik ZKTeco...
         pip install pyzk requests >nul 2>&1
         python -c "import zk" >nul 2>&1
-        if %errorLevel% eq 0 (
+        if %errorLevel% equ 0 (
             echo       [OK] Library pyzk & requests berhasil dipasang!
         ) else (
             echo       [NOTE] Library pyzk belum terpasang otomatis. Anda bisa jalankan: pip install pyzk requests
@@ -255,11 +251,11 @@ echo [7/8] Mendaftarkan domain presensi.balunglor.desa.id & SSL...
 
 set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
 findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
-if %errorLevel% eq 0 (
+if %errorLevel% equ 0 (
     echo       [OK] Domain sudah terdaftar di Windows hosts.
 ) else (
     net session >nul 2>&1
-    if %errorLevel% eq 0 (
+    if %errorLevel% equ 0 (
         echo. >> "%HOSTS_FILE%"
         echo 127.0.0.1    presensi.balunglor.desa.id >> "%HOSTS_FILE%"
         echo 127.0.0.1    presensi.local >> "%HOSTS_FILE%"
@@ -268,7 +264,7 @@ if %errorLevel% eq 0 (
         echo       [*] Meminta izin Administrator untuk mendaftarkan domain...
         powershell -Command "Start-Process cmd.exe -ArgumentList '/c echo. >> \"%HOSTS_FILE%\" & echo 127.0.0.1    presensi.balunglor.desa.id >> \"%HOSTS_FILE%\" & echo 127.0.0.1    presensi.local >> \"%HOSTS_FILE%\"' -Verb RunAs -Wait" >nul 2>&1
         findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
-        if %errorLevel% eq 0 (
+        if %errorLevel% equ 0 (
             echo       [OK] Domain berhasil didaftarkan!
         ) else (
             echo       [NOTE] Domain gagal didaftarkan otomatis. Akses via http://localhost:8000
