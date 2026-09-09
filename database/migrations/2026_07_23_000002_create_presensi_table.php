@@ -16,7 +16,7 @@ return new class extends Migration
             $table->time('jam_pulang')->nullable();
             $table->enum('tipe_verifikasi_masuk', ['fingerprint', 'rfid'])->nullable();
             $table->enum('tipe_verifikasi_pulang', ['fingerprint', 'rfid'])->nullable();
-            $table->enum('status', ['hadir', 'terlambat', 'tidak_hadir', 'sakit', 'izin', 'dispen'])->default('tidak_hadir');
+            $table->enum('status', ['hadir', 'terlambat', 'tidak_hadir', 'sakit', 'izin', 'dispen', 'skorsing'])->default('tidak_hadir');
             $table->text('keterangan')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

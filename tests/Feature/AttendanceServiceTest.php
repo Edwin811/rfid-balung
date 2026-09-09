@@ -15,11 +15,21 @@ class AttendanceServiceTest extends TestCase
 
     protected AttendanceService $service;
     protected Pegawai $pegawai;
+    protected \App\Models\User $user;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->service = new AttendanceService();
+
+        $this->user = \App\Models\User::create([
+            'name' => 'Admin Test',
+            'username' => 'admintest',
+            'email' => 'admin@test.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
 
         $this->pegawai = Pegawai::create([
             'id_mesin' => '101',
@@ -61,13 +71,14 @@ class AttendanceServiceTest extends TestCase
         $this->assertEquals('16:30:00', $presensi->jam_pulang);
     }
 
-    public function test_absen_akhir_pekan_diabaikan()
+    public function test_absen_akhir_pekan_tetap_tercatat()
     {
         // Sunday 2026-07-26
         $presensi = $this->service->processLog('101', '2026-07-26 08:00:00', 'fingerprint');
 
-        $this->assertNull($presensi);
-        $this->assertDatabaseCount('presensi', 0);
+        $this->assertNotNull($presensi);
+        $this->assertEquals('hadir', $presensi->status);
+        $this->assertEquals('2026-07-26', $presensi->tanggal->toDateString());
     }
 
     public function test_prioritas_perizinan_override_absen()
@@ -79,7 +90,7 @@ class AttendanceServiceTest extends TestCase
             'tanggal_mulai' => '2026-07-27',
             'tanggal_selesai' => '2026-07-27',
             'keterangan' => 'Sakit Demam',
-            'dibuat_oleh' => 1,
+            'dibuat_oleh' => $this->user->id,
         ]);
 
         $presensi = $this->service->processLog('101', '2026-07-27 08:00:00', 'fingerprint');

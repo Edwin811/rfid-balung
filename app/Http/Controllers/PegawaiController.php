@@ -16,7 +16,7 @@ class PegawaiController extends Controller
         $tab = $request->input('tab', 'aktif'); // 'aktif', 'arsip', 'histori'
 
         // 1. Data Aparatur Aktif
-        $query = Pegawai::query()->orderBy('id_mesin', 'asc');
+        $query = Pegawai::query()->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC');
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
@@ -45,17 +45,7 @@ class PegawaiController extends Controller
         }
         $arsipList = $arsipQuery->paginate(20, ['*'], 'page_arsip');
 
-        // 3. Log Histori Perangkat & Mutasi RFID/Aparatur
-        $historiQuery = AuditLog::with('user')
-            ->whereIn('aksi', [
-                'tambah_pegawai', 'update_pegawai', 'hapus_pegawai', 
-                'sync_users_to_machine', 'ganti_kartu_rfid', 'pensiun_pegawai', 'mutasi_pegawai'
-            ])
-            ->orderBy('created_at', 'desc');
-
-        $historiPerangkat = $historiQuery->paginate(20, ['*'], 'page_histori');
-
-        return view('pegawai.index', compact('pegawaiList', 'arsipList', 'historiPerangkat', 'search', 'tab'));
+        return view('pegawai.index', compact('pegawaiList', 'arsipList', 'search', 'tab'));
     }
 
     public function store(Request $request)
@@ -129,19 +119,32 @@ class PegawaiController extends Controller
         return back()->with('success', 'Data Aparatur Desa & Kartu RFID berhasil diperbarui dan tersinkron!');
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $pegawai = Pegawai::findOrFail($id);
         $oldData = $pegawai->toArray();
-        $pegawai->update(['status_kepegawaian' => 'pensiun', 'is_active' => false]);
+
+        $kategori = $request->input('kategori', 'pensiun');
+        if (!in_array($kategori, ['pensiun', 'mutasi', 'non_aktif'])) {
+            $kategori = 'pensiun';
+        }
+
+        $labelKategori = [
+            'pensiun' => 'Pensiun (Purna Tugas)',
+            'mutasi' => 'Mutasi Tugas',
+            'non_aktif' => 'Diarsipkan (Non-Aktif)'
+        ][$kategori] ?? 'Diarsipkan';
+
+        $pegawai->update(['status_kepegawaian' => $kategori, 'is_active' => false]);
         $pegawai->delete();
 
-        AuditLogger::log('hapus_pegawai', 'pegawai', $id, $oldData, null);
+        $actionLog = $kategori === 'pensiun' ? 'pensiun_pegawai' : ($kategori === 'mutasi' ? 'mutasi_pegawai' : 'hapus_pegawai');
+        AuditLogger::log($actionLog, 'pegawai', $id, $oldData, ['status_baru' => $kategori, 'kategori' => $labelKategori]);
 
         // Otomatis push perubahan ke mesin fisik ZKTeco di background
         $this->triggerAutoMachineSync();
 
-        return back()->with('success', 'Aparatur Desa berhasil diarsipkan (Pensiun / Soft Delete). Seluruh data presensi historis tetap tersimpan 100%!');
+        return back()->with('success', "Aparatur Desa '{$pegawai->nama_lengkap}' berhasil dicatat sebagai {$labelKategori} dan diarsipkan. Seluruh data presensi historis tetap tersimpan 100%!");
     }
 
     public function restore($id)
@@ -167,6 +170,112 @@ class PegawaiController extends Controller
         AuditLogger::log('sync_users_to_machine', null, null, null, ['output' => $output]);
 
         return back()->with('success', 'Perintah push nama & kartu RFID ke mesin ZKTeco berhasil dijalankan! ' . $output);
+    }
+
+    public function pullFromMachine()
+    {
+        $pythonScript = base_path('scripts/pull_users_from_machine.py');
+        $pythonBin = env('PYTHON_BIN', 'python');
+        $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
+        $rawOutput = shell_exec($command);
+
+        if (!$rawOutput) {
+            return back()->with('error', 'Gagal mengeksekusi script pull data dari mesin.');
+        }
+
+        $result = json_decode($rawOutput, true);
+
+        if (!$result || ($result['status'] ?? '') !== 'success') {
+            return back()->with('error', 'Gagal menarik data dari mesin: ' . ($result['message'] ?? $rawOutput));
+        }
+
+        $users = $result['data'] ?? [];
+        $pulledCount = 0;
+        $updatedCount = 0;
+
+        foreach ($users as $u) {
+            $idMesin = (string) $u['user_id'];
+            $namaMesin = !empty($u['nama']) ? trim($u['nama']) : '';
+            $card = !empty($u['card']) ? (string) $u['card'] : null;
+            $jumlahJari = intval($u['finger_count'] ?? 0);
+
+            $pegawai = Pegawai::withTrashed()->where('id_mesin', $idMesin)->first();
+
+            if ($pegawai) {
+                // UPDATE SELEKTIF & AMAN:
+                // 1. Pertahankan nama resmi dan jabatan di website (jangan ditimpa jika sudah ada)
+                // 2. Pertahankan status pensiun/mutasi jika sudah diarsipkan
+                // 3. Hanya perbarui jumlah template biometrik sidik jari dan nomor kartu jika terdaftar di mesin
+                $updateData = [
+                    'jumlah_jari' => $jumlahJari,
+                ];
+
+                if ($card && empty($pegawai->uid_kartu)) {
+                    $updateData['uid_kartu'] = $card;
+                }
+
+                if (str_starts_with($pegawai->nama_lengkap, 'Aparatur ID') && !empty($namaMesin)) {
+                    $updateData['nama_lengkap'] = strtoupper($namaMesin);
+                }
+
+                $pegawai->update($updateData);
+                $updatedCount++;
+            } else {
+                // Jika user baru di mesin fisik dan belum ada di web, tambahkan tanpa menghapus data yang ada
+                $nama = !empty($namaMesin) ? strtoupper($namaMesin) : "APARATUR ID {$idMesin}";
+                Pegawai::create([
+                    'id_mesin' => $idMesin,
+                    'nama_lengkap' => $nama,
+                    'uid_kartu' => $card,
+                    'jumlah_jari' => $jumlahJari,
+                    'jabatan' => 'Aparatur Desa',
+                    'status_kepegawaian' => 'aktif',
+                    'is_active' => true,
+                ]);
+                $pulledCount++;
+            }
+        }
+
+        // HAPUS TOTAL LOGIKA forceDelete() AGAR DATA WEBSITE TIDAK PERNAH HILANG!
+
+        AuditLogger::log('pull_users_from_machine', null, null, null, [
+            'total_from_machine' => count($users),
+            'new_created' => $pulledCount,
+            'updated' => $updatedCount,
+        ]);
+
+        return back()->with('success', "Proses Tarik Data Selesai! Data biometrik sidik jari & nomor kartu RFID berhasil disinkronkan dengan aman ke website tanpa menghapus data aparatur yang ada. (" . count($users) . " aparatur di mesin, {$pulledCount} aparatur baru terdeteksi, {$updatedCount} data biometrik/kartu diperbarui)");
+    }
+
+    public function deleteFingerprint(Request $request, $id)
+    {
+        $pegawai = Pegawai::withTrashed()->findOrFail($id);
+
+        $pythonScript = base_path('scripts/delete_fingerprint.py');
+        $pythonBin = env('PYTHON_BIN', 'python');
+        $command = escapeshellcmd("{$pythonBin} {$pythonScript} {$pegawai->id_mesin}") . " 2>&1";
+        $rawOutput = shell_exec($command);
+
+        if (!$rawOutput) {
+            return back()->with('error', 'Gagal mengeksekusi script hapus sidik jari dari mesin.');
+        }
+
+        $result = json_decode($rawOutput, true);
+
+        if (!$result || ($result['status'] ?? '') !== 'success') {
+            return back()->with('error', 'Gagal menghapus sidik jari dari mesin: ' . ($result['message'] ?? $rawOutput));
+        }
+
+        // Set jumlah_jari ke 0 di database website
+        $pegawai->update(['jumlah_jari' => 0]);
+
+        AuditLogger::log('delete_fingerprint', 'pegawai', $pegawai->id, null, [
+            'id_mesin' => $pegawai->id_mesin,
+            'nama' => $pegawai->nama_lengkap,
+            'deleted_count' => $result['deleted_count'] ?? 0,
+        ]);
+
+        return back()->with('success', $result['message'] ?? 'Berhasil menghapus sidik jari aparatur dari mesin biometrik!');
     }
 
     private function triggerAutoMachineSync(): void

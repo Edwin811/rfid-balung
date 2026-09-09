@@ -12,6 +12,38 @@ use Illuminate\Support\Facades\Log;
 class AttendanceService
 {
     /**
+     * Fast availability check with 4s caching
+     * Mendukung deteksi mesin baik via ICMP ping maupun TCP/UDP socket.
+     */
+    public static function isDeviceOnline(): bool
+    {
+        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 4, function () {
+            $ip = env('ZKT_IP', '192.168.1.23');
+            $port = intval(env('ZKT_PORT', 4370));
+
+            // 1. Coba ping cepat (200ms) - cocok untuk mesin dengan protokol UDP
+            if (PHP_OS_FAMILY === 'Windows') {
+                $pingCmd = "ping -n 1 -w 200 " . escapeshellarg($ip);
+            } else {
+                $pingCmd = "ping -c 1 -W 1 " . escapeshellarg($ip);
+            }
+            @exec($pingCmd, $output, $resultCode);
+            if ($resultCode === 0) {
+                return true;
+            }
+
+            // 2. Coba TCP socket (300ms) - cocok untuk mesin dengan protokol TCP
+            $fp = @fsockopen($ip, $port, $errno, $errstr, 0.3);
+            if ($fp) {
+                fclose($fp);
+                return true;
+            }
+
+            return false;
+        });
+    }
+
+    /**
      * Process a raw log record into presensi table
      */
     public function processLog(string $idMesinDevice, string $timestampAbsen, ?string $tipeVerifikasi = 'fingerprint', ?array $rawData = null): ?Presensi
@@ -64,8 +96,34 @@ class AttendanceService
                 $presensi->status = 'terlambat';
             }
         } else {
-            // Absen Berikutnya / Pulang
-            $presensi->jam_pulang = $waktu;
+            // Absen Pulang (Scan Kedua atau Lanjutan)
+            if ($waktu >= '16:00:00') {
+                // Pulang Reguler (Mulai jam 16:00:00 WIB ke atas)
+                $presensi->jam_pulang = $waktu;
+                $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+            } else {
+                // Scan Sebelum Jam 16:00 WIB:
+                // HANYA dicatat sebagai Jam Pulang jika aparatur SUDAH MEMILIKI PERIZINAN RESMI (Izin/Dispen/Cuti) di sistem
+                $hasLeave = Perizinan::where('pegawai_id', $pegawai->id)
+                    ->whereDate('tanggal_mulai', '<=', $tanggal)
+                    ->whereDate('tanggal_selesai', '>=', $tanggal)
+                    ->exists();
+
+                if ($hasLeave) {
+                    $selisihMenit = Carbon::parse($presensi->jam_masuk)->diffInMinutes(Carbon::parse($waktu));
+                    if ($selisihMenit >= 10) {
+                        $presensi->jam_pulang = $waktu;
+                        $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
+                    }
+                }
+            }
+        }
+
+        // Always ensure verification type is updated if provided
+        if ($presensi->jam_masuk && $waktu === $presensi->jam_masuk) {
+            $presensi->tipe_verifikasi_masuk = $tipeVerifikasi ?? 'fingerprint';
+        }
+        if ($presensi->jam_pulang && $waktu === $presensi->jam_pulang) {
             $presensi->tipe_verifikasi_pulang = $tipeVerifikasi ?? 'fingerprint';
         }
 
@@ -114,6 +172,32 @@ class AttendanceService
             $presensi->status = $perizinan->jenis_izin;
             $presensi->keterangan = "Perizinan: " . ucfirst($perizinan->jenis_izin) . " (" . ($perizinan->keterangan ?? '-') . ")";
             $presensi->save();
+        }
+    }
+
+    /**
+     * Remove leave and recalculate attendance for a date range when leave is deleted
+     */
+    public function removeLeaveFromAttendance(Perizinan $perizinan): void
+    {
+        $start = Carbon::parse($perizinan->tanggal_mulai);
+        $end = Carbon::parse($perizinan->tanggal_selesai);
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            $tanggalStr = $date->toDateString();
+            $presensi = Presensi::where('pegawai_id', $perizinan->pegawai_id)
+                ->where('tanggal', $tanggalStr)
+                ->first();
+
+            if ($presensi) {
+                if ($presensi->jam_masuk) {
+                    $presensi->status = ($presensi->jam_masuk <= '08:00:59') ? 'hadir' : 'terlambat';
+                    $presensi->keterangan = null;
+                    $presensi->save();
+                } else {
+                    $presensi->delete();
+                }
+            }
         }
     }
 }

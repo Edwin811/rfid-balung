@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Services\AuditLogger;
+use App\Services\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,10 +17,13 @@ class PresensiController extends Controller
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 
-        $pegawaiList = Pegawai::where('is_active', true)->orderBy('nama_lengkap')->get();
+        $pegawaiList = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')->get();
 
         $query = Presensi::with('pegawai', 'updatedBy')
-            ->whereDate('tanggal', $tanggal);
+            ->whereDate('tanggal', $tanggal)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*');
 
         if ($search) {
             $query->whereHas('pegawai', function ($q) use ($search) {
@@ -46,18 +50,20 @@ class PresensiController extends Controller
             ];
         })->values()->toArray();
 
-        return view('presensi.index', compact('tanggal', 'search', 'pegawaiList', 'presensiList', 'presensiFormattedList'));
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
+
+        return view('presensi.index', compact('tanggal', 'search', 'pegawaiList', 'presensiList', 'presensiFormattedList', 'isDeviceOnline'));
     }
 
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        if (!$user->isAdmin() && !$user->isOperator()) {
-            return back()->with('error', 'Hanya Admin dan Operator yang berhak mengubah data presensi.');
+        if (!$user || !($user->isAdmin() || $user->isOperator())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk memperbarui data presensi.');
         }
 
         $request->validate([
-            'status' => ['required', 'in:hadir,terlambat,tidak_hadir,sakit,izin,dispen'],
+            'status' => ['required', 'in:hadir,terlambat,tidak_hadir,sakit,izin,dispen,skorsing'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -76,14 +82,13 @@ class PresensiController extends Controller
 
     public function syncNow()
     {
-        $pythonScript = base_path('scripts/fetch_presensi.py');
-        $pythonBin = env('PYTHON_BIN', 'python');
-        $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
-        $output = shell_exec($command);
-
-        AuditLogger::log('sync_mesin_manual', null, null, null, ['output' => $output]);
-
-        return back()->with('success', 'Proses Sync Log Presensi dari Mesin Biometrik Selesai!');
+        try {
+            \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+            $output = trim(\Illuminate\Support\Facades\Artisan::output());
+            return redirect()->back(fallback: route('presensi.index'))->with('success', 'Sinkronisasi mesin selesai! ' . $output);
+        } catch (\Throwable $e) {
+            return redirect()->back(fallback: route('presensi.index'))->with('error', 'Gagal menarik data dari mesin: ' . $e->getMessage());
+        }
     }
 
     public function harianRealtimeApi(Request $request)
@@ -91,8 +96,22 @@ class PresensiController extends Controller
         $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
         $search = $request->input('search');
 
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
+
+        // Auto-sync cerdas: Jika mesin online dan belum sync dalam 30 detik terakhir, tarik data otomatis
+        if ($isDeviceOnline && \Illuminate\Support\Facades\Cache::add('auto_rfid_sync_throttle', true, 30)) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
+            } catch (\Throwable $e) {
+                // Abaikan error agar respon realtime tetap instan
+            }
+        }
+
         $query = Presensi::with('pegawai', 'updatedBy')
-            ->whereDate('tanggal', $tanggal);
+            ->whereDate('tanggal', $tanggal)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*');
 
         if ($search) {
             $query->whereHas('pegawai', function ($q) use ($search) {
@@ -102,10 +121,12 @@ class PresensiController extends Controller
         }
 
         $presensiList = $query->get();
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
 
         return response()->json([
             'status' => 'success',
             'timestamp' => now()->toTimeString(),
+            'device_online' => $isDeviceOnline,
             'data' => $presensiList->map(function ($p, $index) {
                 return [
                     'no' => $index + 1,

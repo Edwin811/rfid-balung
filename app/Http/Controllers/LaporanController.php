@@ -21,7 +21,7 @@ class LaporanController extends Controller
         $pegawaiId = $request->input('pegawai_id');
         $status = $request->input('status');
 
-        $pegawaiList = Pegawai::where('is_active', true)->orderBy('id_mesin')->get();
+        $pegawaiList = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')->get();
 
         $dataLaporan = $this->getFilteredReportData(
             $jenisLaporan, $bulan, $tahun, $tanggalMulai, $tanggalSelesai, $pegawaiId, $status
@@ -50,22 +50,27 @@ class LaporanController extends Controller
 
         $selectedPegawai = $pegawaiId ? Pegawai::find($pegawaiId) : null;
 
+        $logoPath = public_path('logo.png');
+        $logoBase64 = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+        $printTimestamp = Carbon::now()->locale('id')->isoFormat('DD/MM/YYYY HH:mm:ss') . ' WIB';
+        $currentDateIndo = Carbon::now()->locale('id')->isoFormat('D MMMM YYYY');
+
         AuditLogger::log('export_pdf_laporan', null, null, null, [
             'jenis' => $jenisLaporan, 'bulan' => $bulan, 'tahun' => $tahun, 'pegawai_id' => $pegawaiId
         ]);
 
-        if (class_exists(Pdf::class)) {
-            $pdf = Pdf::loadView('laporan.pdf', compact(
+        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('laporan.pdf', compact(
                 'jenisLaporan', 'bulan', 'tahun', 'namaBulan', 'tanggalMulai', 'tanggalSelesai',
-                'selectedPegawai', 'status', 'dataLaporan'
+                'selectedPegawai', 'status', 'dataLaporan', 'logoBase64', 'printTimestamp', 'currentDateIndo'
             ))->setPaper('a3', 'landscape');
 
-            return $pdf->download("Laporan_Presensi_Pemkab_{$jenisLaporan}_BalungLor.pdf");
+            return $pdf->stream("Laporan_Presensi_Pemkab_{$jenisLaporan}_BalungLor.pdf");
         }
 
         return view('laporan.pdf', compact(
             'jenisLaporan', 'bulan', 'tahun', 'namaBulan', 'tanggalMulai', 'tanggalSelesai',
-            'selectedPegawai', 'status', 'dataLaporan'
+            'selectedPegawai', 'status', 'dataLaporan', 'logoBase64', 'printTimestamp', 'currentDateIndo'
         ));
     }
 
@@ -84,6 +89,10 @@ class LaporanController extends Controller
             $jenisLaporan, $bulan, $tahun, $tanggalMulai, $tanggalSelesai, $pegawaiId, $status
         );
         $selectedPegawai = $pegawaiId ? Pegawai::find($pegawaiId) : null;
+
+        $logoUrl = asset('logo.png');
+        $printTimestamp = Carbon::now()->locale('id')->isoFormat('DD/MM/YYYY HH:mm:ss') . ' WIB';
+        $currentDateIndo = Carbon::now()->locale('id')->isoFormat('D MMMM YYYY');
 
         AuditLogger::log('export_excel_laporan', null, null, null, [
             'jenis' => $jenisLaporan, 'bulan' => $bulan, 'tahun' => $tahun, 'pegawai_id' => $pegawaiId
@@ -109,14 +118,20 @@ class LaporanController extends Controller
         $html .= '.bg-yellow { background-color: #facc15; color: #000; }';
         $html .= '.bg-blue { background-color: #38bdf8; color: #000; }';
         $html .= '.bg-red { background-color: #f87171; color: #000; }';
+        $html .= '.no-border { border: none !important; }';
         $html .= '</style></head><body>';
 
-        // Title Header
-        $html .= '<table>';
-        $html .= '<tr><td colspan="35" class="header-sub">PEMERINTAH KABUPATEN JEMBER</td></tr>';
-        $html .= '<tr><td colspan="35" class="header-title">PEMERINTAH DESA BALUNGLOR</td></tr>';
-        $html .= '<tr><td colspan="35" class="header-period">BULAN : ' . strtoupper($namaBulan) . ' ' . $tahun . ' | INSTANSI : PEMERINTAH DESA BALUNGLOR</td></tr>';
-        $html .= '<tr><td colspan="35">&nbsp;</td></tr>';
+        // Title Header with Logo Pemkab Jember
+        $html .= '<table style="border:none; margin-bottom: 15px;">';
+        $html .= '<tr>';
+        $html .= '<td style="border:none; width:80px; text-align:center; vertical-align:middle;"><img src="' . $logoUrl . '" width="60" height="60" alt="Logo Pemkab Jember"></td>';
+        $html .= '<td style="border:none; text-align:center; vertical-align:middle;" colspan="33">';
+        $html .= '<div class="header-sub">PEMERINTAH KABUPATEN JEMBER</div>';
+        $html .= '<div class="header-title">PEMERINTAH DESA BALUNGLOR</div>';
+        $html .= '<div class="header-sub" style="font-size:11pt; font-weight:bold;">KECAMATAN BALUNG</div>';
+        $html .= '</td></tr>';
+        $html .= '<tr><td colspan="35" style="border:none;" class="header-period">BULAN : ' . strtoupper($namaBulan) . ' ' . $tahun . ' | INSTANSI : PEMERINTAH DESA BALUNGLOR</td></tr>';
+        $html .= '<tr><td colspan="35" style="border:none;">&nbsp;</td></tr>';
         $html .= '</table>';
 
         if ($jenisLaporan === 'bulanan') {
@@ -133,7 +148,7 @@ class LaporanController extends Controller
                 $p = $item['pegawai'];
                 $html .= '<tr>';
                 $html .= '<td class="left"><b>' . $p->nama_lengkap . '</b><br><small>ID: ' . $p->id_mesin . ' | ' . $p->jabatan . '</small></td>';
-                
+
                 foreach ($item['matrix'] as $dayData) {
                     $bg = 'bg-libur';
                     if (!$dayData['is_weekend']) {
@@ -141,7 +156,7 @@ class LaporanController extends Controller
                             $st = $dayData['record']->status;
                             if ($st === 'hadir') $bg = 'bg-green';
                             elseif ($st === 'terlambat') $bg = 'bg-yellow';
-                            elseif (in_array($st, ['sakit', 'izin', 'dispen'])) $bg = 'bg-blue';
+                            elseif (in_array($st, ['sakit', 'izin', 'dispen', 'skorsing'])) $bg = 'bg-blue';
                             else $bg = 'bg-green';
                         } else {
                             $bg = 'bg-red';
@@ -165,6 +180,28 @@ class LaporanController extends Controller
                 $html .= '</tr>';
             }
             $html .= '</tbody></table>';
+
+            // Keterangan Warna Kolom & Kode Status (Persis Seperti di PDF)
+            $html .= '<br>';
+            $html .= '<table style="border: 1px solid #000000; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; font-size: 9pt;">';
+            $html .= '<tr>';
+            $html .= '<td colspan="10" style="border: 1px solid #000000; background-color: #f8fafc; font-weight: bold; padding: 6px 10px; text-align: left;">';
+            $html .= 'KETERANGAN WARNA KOLOM &amp; KODE STATUS:';
+            $html .= '</td>';
+            $html .= '</tr>';
+            $html .= '<tr>';
+            $html .= '<td style="width: 25px; background-color: #4ade80; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>HIJAU (OK / OK-OK)</b> : Hadir Tepat Waktu</td>';
+            $html .= '<td style="width: 25px; background-color: #facc15; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>KUNING (TL1 / PSW)</b> : Terlambat / Pulang Sebelum Waktu</td>';
+            $html .= '<td style="width: 25px; background-color: #38bdf8; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>BIRU (IT / SK / CT)</b> : Izin Tidak Masuk / Sakit / Cuti</td>';
+            $html .= '<td style="width: 25px; background-color: #f87171; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>MERAH (TK)</b> : Tanpa Keterangan / Tidak Hadir</td>';
+            $html .= '<td style="width: 25px; background-color: #e2e8f0; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
+            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>ABU-ABU (LIBUR)</b> : Akhir Pekan (Sabtu &amp; Minggu)</td>';
+            $html .= '</tr>';
+            $html .= '</table>';
         } else {
             $html .= '<table><thead><tr>';
             $html .= '<th>NO</th><th>TANGGAL</th><th>NAMA APARATUR</th><th>JABATAN</th><th>JAM MASUK</th><th>JAM PULANG</th><th>STATUS</th><th>KETERANGAN</th>';
@@ -184,6 +221,23 @@ class LaporanController extends Controller
             $html .= '</tbody></table>';
         }
 
+        // Tanda Tangan & Time Stamp Footer (Excel Format Seperti PDF)
+        $html .= '<br><br>';
+        $html .= '<table style="border:none; width:100%;">';
+        $html .= '<tr>';
+        $html .= '<td colspan="15" style="border:none; text-align:left; vertical-align:top; font-size:9pt; color:#475569;">';
+        $html .= '<b>Dicetak pada:</b> ' . $printTimestamp . '<br>';
+        $html .= '<i>Sistem Informasi Presensi Biometrik & RFID Desa Balunglor</i>';
+        $html .= '</td>';
+        $html .= '<td colspan="20" style="border:none; text-align:center; vertical-align:top; font-size:10pt;">';
+        $html .= 'Jember, ' . $currentDateIndo . '<br>';
+        $html .= '<b>Kepala Desa Balunglor</b><br><br><br><br>';
+        $html .= '<u><b>IMAM MUSTOFA</b></u><br>';
+        $html .= 'Kepala Desa Balunglor';
+        $html .= '</td>';
+        $html .= '</tr>';
+        $html .= '</table>';
+
         $html .= '</body></html>';
 
         return response($html, 200, [
@@ -198,7 +252,7 @@ class LaporanController extends Controller
     private function getFilteredReportData($jenis, $bulan, $tahun, $tglMulai, $tglSelesai, $pegawaiId, $status): array
     {
         if ($jenis === 'bulanan') {
-            $pegawaiQuery = Pegawai::where('is_active', true)->orderBy('id_mesin');
+            $pegawaiQuery = Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC');
             if ($pegawaiId) {
                 $pegawaiQuery->where('id', $pegawaiId);
             }
@@ -242,6 +296,7 @@ class LaporanController extends Controller
                 $countSakit = 0;
                 $countIzin = 0;
                 $countDispen = 0;
+                $countSkorsing = 0;
 
                 foreach ($days as $day) {
                     $dateKey = $day['date_str'];
@@ -263,6 +318,7 @@ class LaporanController extends Controller
                         elseif ($record->status === 'sakit') $countSakit++;
                         elseif ($record->status === 'izin') $countIzin++;
                         elseif ($record->status === 'dispen') $countDispen++;
+                        elseif ($record->status === 'skorsing') $countSkorsing++;
                     }
 
                     $matrix[] = [
@@ -273,7 +329,7 @@ class LaporanController extends Controller
                     ];
                 }
 
-                $totalKehadiranRecorded = $countHadir + $countTerlambat + $countSakit + $countIzin + $countDispen;
+                $totalKehadiranRecorded = $countHadir + $countTerlambat + $countSakit + $countIzin + $countDispen + $countSkorsing;
                 $countTidakHadir = max(0, $workDaysCount - $totalKehadiranRecorded);
 
                 $items[] = [
@@ -284,11 +340,18 @@ class LaporanController extends Controller
                     'sakit' => $countSakit,
                     'izin' => $countIzin,
                     'dispen' => $countDispen,
+                    'skorsing' => $countSkorsing,
                     'tidak_hadir' => $countTidakHadir,
                     'total_kerja' => $workDaysCount,
                     'total_hours' => floor($totalMinutesWorked / 60),
                     'total_mins' => $totalMinutesWorked % 60,
                 ];
+            }
+
+            if ($status && $status !== 'all') {
+                $items = array_values(array_filter($items, function($item) use ($status) {
+                    return isset($item[$status]) && $item[$status] > 0;
+                }));
             }
 
             return [
@@ -299,8 +362,10 @@ class LaporanController extends Controller
             // Mode Harian / Rentang / Individu
             $query = Presensi::with('pegawai')
                 ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
-                ->orderBy('tanggal', 'desc')
-                ->orderBy('pegawai_id', 'asc');
+                ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+                ->orderBy('presensi.tanggal', 'desc')
+                ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+                ->select('presensi.*');
 
             if ($pegawaiId) {
                 $query->where('pegawai_id', $pegawaiId);
@@ -320,6 +385,7 @@ class LaporanController extends Controller
                     'sakit' => $items->where('status', 'sakit')->count(),
                     'izin' => $items->where('status', 'izin')->count(),
                     'dispen' => $items->where('status', 'dispen')->count(),
+                    'skorsing' => $items->where('status', 'skorsing')->count(),
                     'tidak_hadir' => $items->where('status', 'tidak_hadir')->count(),
                 ]
             ];

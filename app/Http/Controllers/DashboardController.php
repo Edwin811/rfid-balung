@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\DeviceLog;
+use App\Services\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,9 @@ class DashboardController extends Controller
         // Ambil data presensi hari ini
         $presensiToday = Presensi::with('pegawai')
             ->whereDate('tanggal', $today)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*')
             ->get();
 
         $countHadir = $presensiToday->where('status', 'hadir')->count();
@@ -33,16 +37,27 @@ class DashboardController extends Controller
         $alreadyRecordedPegawaiIds = $presensiToday->pluck('pegawai_id')->toArray();
         $unCheckedInPegawai = Pegawai::where('is_active', true)
             ->whereNotIn('id', $alreadyRecordedPegawaiIds)
+            ->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')
             ->get();
+
+        $unCheckedInList = $unCheckedInPegawai->map(function ($p, $index) {
+            return [
+                'no' => $index + 1,
+                'id' => $p->id,
+                'id_mesin' => $p->id_mesin ?? '-',
+                'nama' => $p->nama_lengkap,
+                'jabatan' => $p->jabatan,
+            ];
+        })->values()->toArray();
 
         $showLateAlert = (now()->format('H:i') >= '08:01') && ($unCheckedInPegawai->count() > 0);
 
         // Chart 7 hari terakhir
         $chartData = $this->get7DayChartData();
 
-        // Device Connection Status (online if device log received in last 10 minutes)
+        // Device Connection Status (realtime socket check to ZKTeco machine)
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
         $lastLog = DeviceLog::latest('timestamp_absen')->first();
-        $isDeviceOnline = $lastLog ? $lastLog->timestamp_absen->gt(now()->subMinutes(10)) : false;
 
         $presensiTodayList = $presensiToday->map(function ($p) {
             return [
@@ -69,6 +84,7 @@ class DashboardController extends Controller
             'presensiToday',
             'presensiTodayList',
             'unCheckedInPegawai',
+            'unCheckedInList',
             'showLateAlert',
             'chartData',
             'isDeviceOnline',
@@ -83,7 +99,26 @@ class DashboardController extends Controller
 
         $presensiToday = Presensi::with('pegawai')
             ->whereDate('tanggal', $today)
+            ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
+            ->orderByRaw('CAST(pegawai.id_mesin AS UNSIGNED) ASC')
+            ->select('presensi.*')
             ->get();
+
+        $alreadyRecordedPegawaiIds = $presensiToday->pluck('pegawai_id')->toArray();
+        $unCheckedInPegawai = Pegawai::where('is_active', true)
+            ->whereNotIn('id', $alreadyRecordedPegawaiIds)
+            ->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')
+            ->get();
+
+        $unCheckedInList = $unCheckedInPegawai->map(function ($p, $index) {
+            return [
+                'no' => $index + 1,
+                'id' => $p->id,
+                'id_mesin' => $p->id_mesin ?? '-',
+                'nama' => $p->nama_lengkap,
+                'jabatan' => $p->jabatan,
+            ];
+        })->values()->toArray();
 
         $countHadir = $presensiToday->where('status', 'hadir')->count();
         $countTerlambat = $presensiToday->where('status', 'terlambat')->count();
@@ -93,7 +128,7 @@ class DashboardController extends Controller
         $countTidakHadir = max(0, $totalPegawai - $presensiToday->count());
 
         $lastLog = DeviceLog::latest('timestamp_absen')->first();
-        $isDeviceOnline = $lastLog ? $lastLog->timestamp_absen->gt(now()->subMinutes(10)) : false;
+        $isDeviceOnline = AttendanceService::isDeviceOnline();
 
         return response()->json([
             'status' => 'success',
@@ -122,11 +157,21 @@ class DashboardController extends Controller
                     'keterangan' => $p->keterangan ?? '-',
                 ];
             }),
+            'unchecked' => $unCheckedInList,
         ]);
     }
 
     private function get7DayChartData(): array
     {
+        $startDate = Carbon::today()->subDays(6)->toDateString();
+        $endDate = Carbon::today()->toDateString();
+
+        // 1 single query for the 7-day window instead of 7 separate queries
+        $allRecords = Presensi::whereDate('tanggal', '>=', $startDate)
+            ->whereDate('tanggal', '<=', $endDate)
+            ->get()
+            ->groupBy(fn($item) => Carbon::parse($item->tanggal)->toDateString());
+
         $dates = [];
         $hadir = [];
         $terlambat = [];
@@ -137,10 +182,10 @@ class DashboardController extends Controller
             $dateStr = $dt->toDateString();
             $dates[] = $dt->format('d M');
 
-            $records = Presensi::whereDate('tanggal', $dateStr)->get();
-            $hadir[] = $records->where('status', 'hadir')->count();
-            $terlambat[] = $records->where('status', 'terlambat')->count();
-            $izin[] = $records->whereIn('status', ['sakit', 'izin', 'dispen'])->count();
+            $dayRecords = $allRecords->get($dateStr, collect());
+            $hadir[] = $dayRecords->where('status', 'hadir')->count();
+            $terlambat[] = $dayRecords->where('status', 'terlambat')->count();
+            $izin[] = $dayRecords->whereIn('status', ['sakit', 'izin', 'dispen'])->count();
         }
 
         return [

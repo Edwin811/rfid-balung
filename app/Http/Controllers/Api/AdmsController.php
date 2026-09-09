@@ -95,7 +95,7 @@ class AdmsController extends Controller
 
     public function getPegawaiList(): JsonResponse
     {
-        $pegawai = \App\Models\Pegawai::where('is_active', true)->orderBy('id_mesin')->get();
+        $pegawai = \App\Models\Pegawai::where('is_active', true)->orderByRaw('CAST(id_mesin AS UNSIGNED) ASC')->get();
         return response()->json([
             'status' => 'success',
             'data' => $pegawai,
