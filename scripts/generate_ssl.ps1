@@ -1,29 +1,72 @@
 # Script Pemasangan Sertifikat SSL Otomatis untuk Presensi Desa Balunglor
+# Mendukung Laragon di drive manapun (C, D, E, F)
+
+param(
+    [string]$LaragonDir = ""
+)
+
 $ErrorActionPreference = "Stop"
 
-$laragonSslDir = "C:\laragon\etc\ssl"
-
-# Cari Apache bin secara dinamis di C:\laragon\bin\apache
-$apacheDir = Get-ChildItem -Path "C:\laragon\bin\apache\httpd-*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($apacheDir) {
-    $apacheBinDir = Join-Path $apacheDir.FullName "bin"
-} else {
-    $apacheBinDir = "C:\laragon\bin\apache\httpd-2.4.54-win64-VS16\bin"
-}
-$opensslExe = Join-Path $apacheBinDir "openssl.exe"
-
-if (-not (Test-Path $opensslExe)) {
-    $gitOpenssl = "C:\Program Files\Git\usr\bin\openssl.exe"
-    if (Test-Path $gitOpenssl) {
-        $opensslExe = $gitOpenssl
-    } else {
-        Write-Host "[ERROR] OpenSSL tidak ditemukan di $opensslExe!" -ForegroundColor Red
+# 1. Deteksi Laragon secara dinamis jika tidak diberikan parameter
+if (-not $LaragonDir -or -not (Test-Path $LaragonDir)) {
+    $LaragonDir = ""
+    foreach ($drive in @("C", "D", "E", "F")) {
+        $candidate = "${drive}:\laragon"
+        if (Test-Path $candidate) {
+            $LaragonDir = $candidate
+            Write-Host "[OK] Laragon ditemukan di: $LaragonDir" -ForegroundColor Green
+            break
+        }
+    }
+    if (-not $LaragonDir) {
+        Write-Host "[ERROR] Laragon tidak ditemukan di Drive C, D, E, atau F!" -ForegroundColor Red
         exit 1
     }
 }
 
+$laragonSslDir = Join-Path $LaragonDir "etc\ssl"
+
+# 2. Cari OpenSSL: Apache Laragon -> Git -> System PATH
+$opensslExe = ""
+
+# Cari di Apache Laragon
+$apacheDir = Get-ChildItem -Path (Join-Path $LaragonDir "bin\apache\httpd-*") -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($apacheDir) {
+    $candidate = Join-Path $apacheDir.FullName "bin\openssl.exe"
+    if (Test-Path $candidate) {
+        $opensslExe = $candidate
+        Write-Host "[OK] OpenSSL ditemukan di Apache: $opensslExe" -ForegroundColor Green
+    }
+}
+
+# Fallback: Git OpenSSL
+if (-not $opensslExe) {
+    $gitOpenssl = "C:\Program Files\Git\usr\bin\openssl.exe"
+    if (Test-Path $gitOpenssl) {
+        $opensslExe = $gitOpenssl
+        Write-Host "[OK] OpenSSL ditemukan di Git: $opensslExe" -ForegroundColor Green
+    }
+}
+
+# Fallback: System PATH
+if (-not $opensslExe) {
+    $pathOpenssl = Get-Command openssl -ErrorAction SilentlyContinue
+    if ($pathOpenssl) {
+        $opensslExe = $pathOpenssl.Source
+        Write-Host "[OK] OpenSSL ditemukan di PATH: $opensslExe" -ForegroundColor Green
+    }
+}
+
+if (-not $opensslExe) {
+    Write-Host "[ERROR] OpenSSL tidak ditemukan!" -ForegroundColor Red
+    Write-Host "        Pastikan Apache Laragon terinstall atau Git for Windows tersedia." -ForegroundColor Yellow
+    exit 1
+}
+
+# 3. Buat direktori SSL jika belum ada
 if (-not (Test-Path $laragonSslDir)) {
     New-Item -ItemType Directory -Path $laragonSslDir -Force | Out-Null
+    Write-Host "[OK] Direktori SSL dibuat: $laragonSslDir" -ForegroundColor Green
 }
 
 $caKey = Join-Path $laragonSslDir "ca.key"
@@ -35,7 +78,7 @@ $serverCsr = Join-Path $laragonSslDir "laragon.csr"
 $serverCrt = Join-Path $laragonSslDir "laragon.crt"
 $serverCnf = Join-Path $laragonSslDir "server.cnf"
 
-# 1. Konfigurasi dan Pembuatan Root CA (Masa Aktif 10 Tahun)
+# 4. Konfigurasi dan Pembuatan Root CA (Masa Aktif 10 Tahun)
 Write-Host "[*] Menyiapkan Root Certificate Authority (CA) Lokal Desa Balunglor..." -ForegroundColor Cyan
 
 $caCnfContent = @"
@@ -63,7 +106,13 @@ subjectKeyIdentifier = hash
 Set-Content -Path $caCnf -Value $caCnfContent -Encoding ASCII
 & $opensslExe req -x509 -new -nodes -keyout $caKey -out $caCrt -days 3650 -config $caCnf
 
-# 2. Konfigurasi Server Certificate (Masa Aktif 365 Hari - Wajib Standar Chrome/Chromium)
+if (-not (Test-Path $caCrt)) {
+    Write-Host "[ERROR] Gagal membuat Root CA!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "[OK] Root CA berhasil dibuat." -ForegroundColor Green
+
+# 5. Konfigurasi Server Certificate (Masa Aktif 365 Hari - Standar Chrome/Chromium)
 Write-Host "[*] Menyiapkan Sertifikat SSL Server dengan EKU serverAuth & SAN..." -ForegroundColor Cyan
 
 $serverCnfContent = @"
@@ -106,11 +155,14 @@ Set-Content -Path $serverCnf -Value $serverCnfContent -Encoding ASCII
 # Generate Server Private Key & CSR
 & $opensslExe req -new -nodes -keyout $serverKey -out $serverCsr -config $serverCnf
 
-# Sign Server Certificate menggunakan Root CA (Masa aktif 365 hari, memenuhi standar Chromium)
+# Sign Server Certificate menggunakan Root CA (365 hari, standar Chromium)
 & $opensslExe x509 -req -in $serverCsr -CA $caCrt -CAkey $caKey -CAcreateserial -out $serverCrt -days 365 -extfile $serverCnf -extensions server_ext -sha256
 
 if (-not (Test-Path $serverCrt) -or -not (Test-Path $serverKey)) {
     Write-Host "[ERROR] Gagal membuat file sertifikat SSL server!" -ForegroundColor Red
+    Write-Host "        File yang diharapkan:" -ForegroundColor Yellow
+    Write-Host "        - $serverCrt" -ForegroundColor Yellow
+    Write-Host "        - $serverKey" -ForegroundColor Yellow
     exit 1
 }
 
@@ -118,8 +170,14 @@ Write-Host "[OK] Sertifikat SSL server berhasil dibuat:" -ForegroundColor Green
 Write-Host "     - $serverCrt"
 Write-Host "     - $serverKey"
 
-# 3. Daftarkan Root CA ke Windows Trusted Root Certification Authorities
+# 6. Daftarkan Root CA ke Windows Trusted Root Certification Authorities
 Write-Host "[*] Mendaftarkan Balunglor Local Root CA ke Windows Trusted Root Store..." -ForegroundColor Cyan
 & certutil -addstore -f "ROOT" $caCrt
 
-Write-Host "[OK] SUKSES! Sertifikat SSL kini dipercaya oleh Windows, Google Chrome, dan Edge!" -ForegroundColor Green
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "[OK] SUKSES! Sertifikat SSL kini dipercaya oleh Windows, Google Chrome, dan Edge!" -ForegroundColor Green
+} else {
+    Write-Host "[WARNING] Pendaftaran ke Trust Store mungkin gagal." -ForegroundColor Yellow
+    Write-Host "          Browser mungkin menampilkan peringatan 'Not Secure'." -ForegroundColor Yellow
+    Write-Host "          Coba jalankan script ini dengan Run as Administrator." -ForegroundColor Yellow
+}

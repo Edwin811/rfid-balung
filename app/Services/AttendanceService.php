@@ -18,8 +18,8 @@ class AttendanceService
     public static function isDeviceOnline(): bool
     {
         return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 4, function () {
-            $ip = env('ZKT_IP', '192.168.1.23');
-            $port = intval(env('ZKT_PORT', 4370));
+            $ip = config('zkteco.ip', '192.168.1.23');
+            $port = (int) config('zkteco.port', 4370);
 
             // 1. Coba ping cepat (200ms) - cocok untuk mesin dengan protokol UDP
             if (PHP_OS_FAMILY === 'Windows') {

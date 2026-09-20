@@ -31,8 +31,10 @@ if "%errorLevel%"=="0" (
 echo.
 echo ===============================================================
 echo Alamat domain lokal Anda kini resmi aktif:
+echo - https://presensi.balunglor.desa.id   (jika SSL terpasang)
 echo - http://presensi.balunglor.desa.id:8000
 echo - http://presensi.local:8000
+echo - http://localhost:8000
 echo ===============================================================
 echo.
 pause

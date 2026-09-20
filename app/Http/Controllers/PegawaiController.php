@@ -282,8 +282,13 @@ class PegawaiController extends Controller
     {
         try {
             $pythonScript = base_path('scripts/push_users_to_machine.py');
-            $pythonBin = env('PYTHON_BIN', 'python');
-            $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " > /dev/null 2>&1 &";
+            $pythonBin = config('zkteco.python_bin', 'python');
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $command = 'start /B ' . escapeshellcmd("{$pythonBin} {$pythonScript}") . ' > NUL 2>&1';
+            } else {
+                $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . ' > /dev/null 2>&1 &';
+            }
             exec($command);
         } catch (\Throwable $e) {
             Log::warning("Auto-sync machine error: " . $e->getMessage());
