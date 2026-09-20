@@ -30,7 +30,7 @@ class AdmsController extends Controller
     public function handleAttendance(Request $request): JsonResponse
     {
         $secretKey = $request->input('secret_key') ?? $request->header('X-ADMS-KEY');
-        $expectedKey = config('app.adms_secret_key', env('ADMS_SECRET_KEY', 'balunglor_secret_2026'));
+        $expectedKey = config('zkteco.adms_secret_key', 'balunglor_secret_2026');
 
         if ($secretKey !== $expectedKey) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized key'], 401);

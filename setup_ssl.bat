@@ -1,6 +1,7 @@
 @echo off
 title Presensi Desa Balunglor - Setup SSL HTTPS Otomatis
 cd /d "%~dp0"
+setlocal enabledelayedexpansion
 
 echo ===============================================================
 echo   PEMASANGAN SERTIFIKAT SSL HTTPS PRESENSI DESA BALUNGLOR
@@ -32,23 +33,46 @@ if %errorLevel% neq 0 (
     echo [OK] Domain presensi.balunglor.desa.id sudah ada di hosts.
 )
 
-:: 4. Generate Sertifikat SSL & Masukkan ke Windows Trust Store
+:: 4. Deteksi Laragon di semua drive (C, D, E, F)
+set "LARAGON_DIR="
+for %%L in (C D E F) do (
+    if exist "%%L:\laragon" (
+        set "LARAGON_DIR=%%L:\laragon"
+        echo [OK] Laragon ditemukan di: %%L:\laragon
+        goto LARAGON_FOUND
+    )
+)
+
+echo [ERROR] Laragon tidak ditemukan di Drive C, D, E, atau F!
+echo         SSL membutuhkan Apache dari Laragon.
+echo         Silakan install Laragon terlebih dahulu.
+pause
+exit /b 1
+
+:LARAGON_FOUND
+
+:: 5. Generate Sertifikat SSL & Masukkan ke Windows Trust Store
 echo [*] Memasang sertifikat SSL terpercaya ke Windows...
-powershell -ExecutionPolicy Bypass -File "%~dp0scripts\generate_ssl.ps1"
+powershell -ExecutionPolicy Bypass -File "%~dp0scripts\generate_ssl.ps1" -LaragonDir "!LARAGON_DIR!"
 if %errorLevel% neq 0 (
     echo [ERROR] Gagal memasang sertifikat SSL.
+    echo         Lihat pesan error di atas untuk detail.
     pause
     exit /b 1
 )
 
-:: 5. Pasang Konfigurasi VirtualHost Apache Laragon
+:: 6. Pasang Konfigurasi VirtualHost Apache Laragon
 echo [*] Memasang konfigurasi VirtualHost SSL di Apache Laragon...
-if not exist "C:\laragon\etc\apache2\sites-enabled" mkdir "C:\laragon\etc\apache2\sites-enabled" >nul 2>&1
-set "VHOST_FILE=C:\laragon\etc\apache2\sites-enabled\presensi.balunglor.desa.id.conf"
+set "SITES_DIR=!LARAGON_DIR!\etc\apache2\sites-enabled"
+if not exist "!SITES_DIR!" mkdir "!SITES_DIR!" >nul 2>&1
+set "VHOST_FILE=!SITES_DIR!\presensi.balunglor.desa.id.conf"
 
 set "PROJ_PATH=%~dp0"
 set "PROJ_PATH=%PROJ_PATH:\=/%"
 set "PROJ_PUBLIC=%PROJ_PATH%public"
+
+set "SSL_DIR=!LARAGON_DIR!\etc\ssl"
+set "SSL_DIR_FWD=!SSL_DIR:\=/!"
 
 (
 echo Listen 8000
@@ -73,43 +97,50 @@ echo         Require all granted
 echo     ^</Directory^>
 echo.
 echo     SSLEngine on
-echo     SSLCertificateFile "C:/laragon/etc/ssl/laragon.crt"
-echo     SSLCertificateKeyFile "C:/laragon/etc/ssl/laragon.key"
-echo     SSLCertificateChainFile "C:/laragon/etc/ssl/ca.crt"
+echo     SSLCertificateFile "!SSL_DIR_FWD!/laragon.crt"
+echo     SSLCertificateKeyFile "!SSL_DIR_FWD!/laragon.key"
+echo     SSLCertificateChainFile "!SSL_DIR_FWD!/ca.crt"
 echo ^</VirtualHost^>
-) > "%VHOST_FILE%"
+) > "!VHOST_FILE!"
 
-echo [OK] Konfigurasi Apache berhasil dipasang!
+echo [OK] Konfigurasi Apache VirtualHost berhasil dipasang!
+echo       File: !VHOST_FILE!
 
-:: 6. Deteksi Apache dan Jalankan
+:: 7. Deteksi Apache dan Jalankan
 set "APACHE_DIR="
-for /d %%A in (C:\laragon\bin\apache\httpd-*) do (
+for /d %%A in (!LARAGON_DIR!\bin\apache\httpd-*) do (
     if exist "%%A\bin\httpd.exe" (
         set "APACHE_DIR=%%A"
     )
 )
 
-if defined APACHE_DIR (
-    set "APACHE_EXE=%APACHE_DIR%\bin\httpd.exe"
-    
-    :: Pastikan nghttp2.dll Apache sinkron dengan PHP
-    for /d %%P in (C:\laragon\bin\php\php-*) do (
-        if exist "%%P\nghttp2.dll" (
-            copy /y "%%P\nghttp2.dll" "%APACHE_DIR%\bin\nghttp2.dll" >nul 2>&1
-        )
-    )
+if not defined APACHE_DIR (
+    echo [WARNING] Apache tidak ditemukan di Laragon.
+    echo           SSL hanya berfungsi dengan Apache, bukan PHP built-in server.
+    echo           App tetap bisa diakses via http://localhost:8000
+    goto SSL_DONE
+)
 
-    echo [*] Mendaftarkan Apache sebagai Windows Service (Auto-Start Background)...
-    "%APACHE_EXE%" -k install -n "LaragonApache" >nul 2>&1
-    net start LaragonApache >nul 2>&1
-    if "%errorLevel%"=="0" (
-        echo [OK] Service Apache berhasil dinyalakan!
-    ) else (
-        echo [*] Menjalankan Apache secara background process...
-        start "" /B "%APACHE_EXE%" -d "%APACHE_DIR%"
+set "APACHE_EXE=!APACHE_DIR!\bin\httpd.exe"
+
+:: Pastikan nghttp2.dll Apache sinkron dengan PHP
+for /d %%P in (!LARAGON_DIR!\bin\php\php-*) do (
+    if exist "%%P\nghttp2.dll" (
+        copy /y "%%P\nghttp2.dll" "!APACHE_DIR!\bin\nghttp2.dll" >nul 2>&1
     )
 )
 
+echo [*] Mendaftarkan Apache sebagai Windows Service (Auto-Start Background)...
+"!APACHE_EXE!" -k install -n "LaragonApache" >nul 2>&1
+net start LaragonApache >nul 2>&1
+if "!errorLevel!"=="0" (
+    echo [OK] Service Apache berhasil dinyalakan!
+) else (
+    echo [*] Menjalankan Apache secara background process...
+    start "" /B "!APACHE_EXE!" -d "!APACHE_DIR!"
+)
+
+:SSL_DONE
 echo.
 echo ===============================================================
 echo [BERHASIL 100%%] PEMASANGAN SSL HTTPS SELESAI!
