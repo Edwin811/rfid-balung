@@ -17,7 +17,7 @@ class SyncRfidAttendance extends Command
         $this->info('Memulai sinkronisasi data presensi dari mesin biometrik & RFID ZKTeco...');
         
         $pythonScript = base_path('scripts/fetch_presensi.py');
-        $pythonBin = env('PYTHON_BIN', 'python');
+        $pythonBin = config('zkteco.python_bin', 'python');
 
         $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
         $rawOutput = shell_exec($command);

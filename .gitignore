@@ -1,4 +1,7 @@
 *.log
+*_log.txt
+__pycache__/
+*.pyc
 .DS_Store
 .env
 .env.backup
