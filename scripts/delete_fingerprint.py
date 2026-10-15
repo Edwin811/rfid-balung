@@ -6,7 +6,27 @@ import sys
 import json
 from zk import ZK
 
-IP_MESIN = os.getenv('ZKT_IP', '169.254.176.250')
+# Auto-load konfigurasi dari file .env proyek
+def load_env():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_file = os.path.join(base_dir, '.env')
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        parts = line.split('=', 1)
+                        key = parts[0].strip()
+                        val = parts[1].strip().strip('"\'')
+                        if key not in os.environ or not os.environ[key]:
+                            os.environ[key] = val
+        except Exception:
+            pass
+
+load_env()
+
+IP_MESIN = os.getenv('ZKT_IP', '192.168.1.23')
 PORT = int(os.getenv('ZKT_PORT', 4370))
 PASSWORD = int(os.getenv('ZKT_PASSWORD', 0))
 

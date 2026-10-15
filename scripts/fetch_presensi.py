@@ -9,6 +9,26 @@ import requests
 from datetime import datetime
 from zk import ZK
 
+# Auto-load konfigurasi dari file .env proyek
+def load_env():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_file = os.path.join(base_dir, '.env')
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        parts = line.split('=', 1)
+                        key = parts[0].strip()
+                        val = parts[1].strip().strip('"\'')
+                        if key not in os.environ or not os.environ[key]:
+                            os.environ[key] = val
+        except Exception:
+            pass
+
+load_env()
+
 IP_MESIN = os.getenv('ZKT_IP', '192.168.1.23')
 PORT = int(os.getenv('ZKT_PORT', 4370))
 PASSWORD = int(os.getenv('ZKT_PASSWORD', 0))
@@ -75,7 +95,16 @@ def fetch_attendance():
 
 def kirim_ke_laravel(logs):
     """Mengirim log presensi langsung ke API Laravel ADMS"""
-    for target_url in [API_URL, 'http://127.0.0.1/api/adms/attendance', 'http://localhost:8000/api/adms/attendance']:
+    targets = [
+        API_URL,
+        'http://127.0.0.1:8000/api/adms/attendance',
+        'http://localhost:8000/api/adms/attendance',
+        'http://127.0.0.1/api/adms/attendance',
+        'http://localhost/api/adms/attendance'
+    ]
+    unique_targets = list(dict.fromkeys(targets))
+
+    for target_url in unique_targets:
         try:
             res = requests.post(target_url, json={
                 'secret_key': SECRET_KEY,
@@ -90,60 +119,96 @@ def kirim_ke_laravel(logs):
 
 def daemon_mode():
     """
-    Background Daemon Mode:
-    1. Mencoba terus terhubung ke mesin (auto-reconnect jika mesin mati).
-    2. Saat terhubung pertama kali: sinkronkan semua data presensi di memori mesin.
-    3. Standby live capture: setiap scan jari/kartu langsung terkirim ke Laravel secara instan (< 0.5 detik).
+    Background Daemon Mode (Realtime Hybrid):
+    1. Terus terhubung ke mesin dengan auto-reconnect jika offline/kabel lepas.
+    2. Saat terhubung: sinkronkan semua riwayat presensi di memori mesin ke web.
+    3. Loop monitoring realtime (interval 2 detik):
+       - Memeriksa adanya log tap/scan baru di memori mesin.
+       - Scan baru langsung di-push ke Laravel API secara instan (< 2 detik).
+       - Menjaga koneksi tetap hidup tanpa membebani memori mesin.
     """
-    print(f"[*] Menjalankan ZKTeco Sync Daemon untuk mesin {IP_MESIN}:{PORT}...")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [*] Menjalankan ZKTeco Sync Daemon untuk mesin {IP_MESIN}:{PORT}...")
+    sys.stdout.flush()
+
     while True:
         zk = None
         conn = None
         try:
             zk, conn = get_connection(timeout=5)
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung ke mesin ZKTeco!")
+            sys.stdout.flush()
 
-            # 1. Ambil dan kirim semua data presensi yang ada di memori mesin
+            known_keys = set()
+
+            # 1. Sinkronisasi awal: Ambil semua data presensi di memori mesin
             try:
                 attendances = conn.get_attendance()
                 if attendances:
                     logs_payload = []
                     for log in attendances:
+                        ts_str = log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                        uid_str = str(log.user_id)
+                        key = f"{uid_str}_{ts_str}"
+                        known_keys.add(key)
                         tipe = 'rfid' if str(log.status) == '4' else 'fingerprint'
                         logs_payload.append({
-                            'user_id': str(log.user_id),
-                            'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                            'user_id': uid_str,
+                            'timestamp': ts_str,
                             'status': log.status,
                             'punch': getattr(log, 'punch', 0),
                             'tipe_verifikasi': tipe
                         })
                     kirim_ke_laravel(logs_payload)
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Berhasil menyinkronkan {len(logs_payload)} rekaman presensi.")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Sinkronisasi awal berhasil: {len(logs_payload)} log diproses.")
+                    sys.stdout.flush()
             except Exception as e_att:
-                print(f"[NOTE] Gagal sinkron awal presensi: {e_att}")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [NOTE] Sinkronisasi awal presensi: {e_att}")
+                sys.stdout.flush()
 
-            # 2. Live stream event capture
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Standby mendengarkan scan presensi secara langsung...")
-            for event in conn.live_capture():
-                if event is None:
-                    continue
+            # 2. Polling loop realtime (setiap 2 detik)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Standby mendengarkan scan presensi secara realtime...")
+            sys.stdout.flush()
 
-                uid_str = str(event.user_id)
-                ts_str = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                tipe = 'rfid' if str(event.status) == '4' else 'fingerprint'
+            consecutive_errors = 0
+            while True:
+                time.sleep(2)
+                try:
+                    current_attendances = conn.get_attendance()
+                    consecutive_errors = 0
+                    new_logs = []
 
-                kirim_ke_laravel([{
-                    'user_id': uid_str,
-                    'timestamp': ts_str,
-                    'status': event.status,
-                    'punch': getattr(event, 'punch', 0),
-                    'tipe_verifikasi': tipe
-                }])
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] [SCAN INSTAN] User ID {uid_str} pada {ts_str}")
+                    for log in current_attendances:
+                        ts_str = log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                        uid_str = str(log.user_id)
+                        key = f"{uid_str}_{ts_str}"
+
+                        if key not in known_keys:
+                            known_keys.add(key)
+                            tipe = 'rfid' if str(log.status) == '4' else 'fingerprint'
+                            new_logs.append({
+                                'user_id': uid_str,
+                                'timestamp': ts_str,
+                                'status': log.status,
+                                'punch': getattr(log, 'punch', 0),
+                                'tipe_verifikasi': tipe
+                            })
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] [SCAN REALTIME] User ID {uid_str} ({tipe}) pada {ts_str}")
+                            sys.stdout.flush()
+
+                    if new_logs:
+                        kirim_ke_laravel(new_logs)
+
+                except Exception as poll_err:
+                    consecutive_errors += 1
+                    if consecutive_errors >= 3:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] [NOTE] Koneksi terputus: {poll_err}. Menghubungkan ulang...")
+                        sys.stdout.flush()
+                        break
 
         except Exception as e:
-            # Mesin sedang mati atau kabel dilepas; tunggu 5 detik lalu coba lagi
-            time.sleep(5)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] Menghubungkan ke mesin {IP_MESIN}... ({e})")
+            sys.stdout.flush()
+            time.sleep(3)
         finally:
             if conn:
                 try:
