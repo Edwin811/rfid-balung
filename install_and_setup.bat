@@ -279,7 +279,9 @@ echo [7/8] Menyiapkan Domain presensi.balunglor.desa.id dan SSL...
 echo [%date% %time%] [TAHAP 7] Domain dan SSL... >> "%LOGFILE%"
 
 if exist "%~dp0setup_ssl.bat" (
+    set "CALLED_FROM_INSTALLER=1"
     call "%~dp0setup_ssl.bat"
+    set "CALLED_FROM_INSTALLER="
 ) else (
     set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
     findstr /C:"presensi.balunglor.desa.id" "%HOSTS_FILE%" >nul 2>&1
@@ -339,8 +341,8 @@ echo   - Konfigurasi .env: [!STATUS_ENV!]
 echo   - Kunci Keamanan  : [!STATUS_KEY!]
 echo   - Database MySQL  : [!STATUS_DB!]
 echo   - Data Aparatur   : [!STATUS_SEED!]
-echo   - Python & PyZK   : [!STATUS_PYTHON!]
-echo   - Domain & SSL    : [!STATUS_DOMAIN!]
+echo   - Python ^& PyZK   : [!STATUS_PYTHON!]
+echo   - Domain ^& SSL    : [!STATUS_DOMAIN!]
 echo   - Web Server      : [!STATUS_SERVER!]
 echo.
 echo   Alamat Akses Website:

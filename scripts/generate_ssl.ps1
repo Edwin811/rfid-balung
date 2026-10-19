@@ -104,10 +104,23 @@ subjectKeyIdentifier = hash
 "@
 
 Set-Content -Path $caCnf -Value $caCnfContent -Encoding ASCII
-& $opensslExe req -x509 -new -nodes -keyout $caKey -out $caCrt -days 3650 -config $caCnf
 
-if (-not (Test-Path $caCrt)) {
+# Set OPENSSL_CONF agar Apache OpenSSL tidak error mencari config default
+$env:OPENSSL_CONF = $caCnf
+$sslErrorLog = Join-Path $laragonSslDir "ssl_error.log"
+
+# Generate Root CA key + cert
+$sslOutput = & $opensslExe req -x509 -new -nodes -newkey rsa:2048 -keyout $caKey -out $caCrt -days 3650 -config $caCnf 2>&1
+$sslOutput | Out-File -FilePath $sslErrorLog -Encoding ASCII
+
+if (-not (Test-Path $caCrt) -or (Get-Item $caCrt).Length -eq 0) {
     Write-Host "[ERROR] Gagal membuat Root CA!" -ForegroundColor Red
+    Write-Host "        Detail error:" -ForegroundColor Yellow
+    if (Test-Path $sslErrorLog) {
+        Get-Content $sslErrorLog | ForEach-Object { Write-Host "        $_" -ForegroundColor Yellow }
+    }
+    Write-Host "        OpenSSL: $opensslExe" -ForegroundColor Yellow
+    Write-Host "        Config : $caCnf" -ForegroundColor Yellow
     exit 1
 }
 Write-Host "[OK] Root CA berhasil dibuat." -ForegroundColor Green
@@ -152,14 +165,23 @@ IP.1 = 127.0.0.1
 
 Set-Content -Path $serverCnf -Value $serverCnfContent -Encoding ASCII
 
+# Set OPENSSL_CONF ke server.cnf
+$env:OPENSSL_CONF = $serverCnf
+
 # Generate Server Private Key & CSR
-& $opensslExe req -new -nodes -keyout $serverKey -out $serverCsr -config $serverCnf
+$sslOutput = & $opensslExe req -new -nodes -newkey rsa:2048 -keyout $serverKey -out $serverCsr -config $serverCnf 2>&1
+$sslOutput | Out-File -FilePath $sslErrorLog -Encoding ASCII -Append
 
 # Sign Server Certificate menggunakan Root CA (365 hari, standar Chromium)
-& $opensslExe x509 -req -in $serverCsr -CA $caCrt -CAkey $caKey -CAcreateserial -out $serverCrt -days 365 -extfile $serverCnf -extensions server_ext -sha256
+$sslOutput = & $opensslExe x509 -req -in $serverCsr -CA $caCrt -CAkey $caKey -CAcreateserial -out $serverCrt -days 365 -extfile $serverCnf -extensions server_ext -sha256 2>&1
+$sslOutput | Out-File -FilePath $sslErrorLog -Encoding ASCII -Append
 
 if (-not (Test-Path $serverCrt) -or -not (Test-Path $serverKey)) {
     Write-Host "[ERROR] Gagal membuat file sertifikat SSL server!" -ForegroundColor Red
+    Write-Host "        Detail error:" -ForegroundColor Yellow
+    if (Test-Path $sslErrorLog) {
+        Get-Content $sslErrorLog | ForEach-Object { Write-Host "        $_" -ForegroundColor Yellow }
+    }
     Write-Host "        File yang diharapkan:" -ForegroundColor Yellow
     Write-Host "        - $serverCrt" -ForegroundColor Yellow
     Write-Host "        - $serverKey" -ForegroundColor Yellow
