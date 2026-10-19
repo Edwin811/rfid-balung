@@ -77,9 +77,7 @@ set "SSL_DIR=!LARAGON_DIR!\etc\ssl"
 set "SSL_DIR_FWD=!SSL_DIR:\=/!"
 
 (
-echo Listen 8000
-echo.
-echo ^<VirtualHost *:80 *:8000^>
+echo ^<VirtualHost *:80^>
 echo     DocumentRoot "%PROJ_PUBLIC%"
 echo     ServerName presensi.balunglor.desa.id
 echo     ServerAlias *.balunglor.desa.id presensi.local localhost 127.0.0.1
@@ -152,7 +150,8 @@ echo Server HTTPS kini berjalan otomatis di latar belakang.
 echo.
 echo Silakan buka browser Anda di:
 echo  - https://presensi.balunglor.desa.id  (Aman dengan Gembok SSL)
-echo  - http://presensi.balunglor.desa.id:8000
+echo  - http://presensi.balunglor.desa.id   (Port 80 HTTP)
+echo  - http://localhost:8000              (Port 8000 Alternatif)
 echo ===============================================================
 echo.
 exit /b 0

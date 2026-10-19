@@ -197,15 +197,36 @@ if "%errorLevel%"=="0" set "MYSQL_READY=1"
 
 if "!MYSQL_READY!"=="0" (
     echo       [*] Menyalakan MySQL...
-    net start mysql >nul 2>&1
-    for %%L in (C D E F) do (
-        for /d %%D in (%%L:\laragon\bin\mysql\mysql-*) do (
-            if exist "%%D\bin\mysqld.exe" (
-                start "" /B "%%D\bin\mysqld.exe" --defaults-file="%%D\my.ini" >nul 2>&1
+    net start MySQL >nul 2>&1
+    if "!errorLevel!" neq "0" net start mysql >nul 2>&1
+    powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1
+    if "!errorLevel!"=="0" set "MYSQL_READY=1"
+
+    if "!MYSQL_READY!"=="0" (
+        for %%L in (C D E F) do (
+            for /d %%D in (%%L:\laragon\bin\mysql\mysql-*) do (
+                if exist "%%D\bin\mysqld.exe" (
+                    :: Daftarkan sebagai Windows Service permanen agar tidak mati saat jendela CMD ditutup
+                    if exist "%%D\my.ini" (
+                        "%%D\bin\mysqld.exe" --install MySQL --defaults-file="%%D\my.ini" >nul 2>&1
+                    ) else (
+                        "%%D\bin\mysqld.exe" --install MySQL >nul 2>&1
+                    )
+                    net start MySQL >nul 2>&1
+                    :: Jika service gagal, jalankan secara detached via Start-Process (bukan start /B)
+                    powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1
+                    if "!errorLevel!" neq "0" (
+                        if exist "%%D\my.ini" (
+                            powershell -Command "Start-Process '%%D\bin\mysqld.exe' -ArgumentList '--defaults-file=\"\"%%D\my.ini\"\"' -WindowStyle Hidden" >nul 2>&1
+                        ) else (
+                            powershell -Command "Start-Process '%%D\bin\mysqld.exe' -ArgumentList '--console' -WindowStyle Hidden" >nul 2>&1
+                        )
+                    )
+                )
             )
         )
     )
-    for /L %%I in (1,1,8) do (
+    for /L %%I in (1,1,10) do (
         if "!MYSQL_READY!"=="0" (
             powershell -Command "Start-Sleep -Seconds 2" >nul 2>&1
             powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1
@@ -320,7 +341,7 @@ echo       [*] Menyalakan server presensi di latar belakang...
 echo [%date% %time%]   Menjalankan run_background.vbs >> "%LOGFILE%"
 wscript "%~dp0run_background.vbs" >nul 2>&1
 
-powershell -Command "Start-Sleep -Seconds 3" >nul 2>&1
+powershell -Command "Start-Sleep -Seconds 5" >nul 2>&1
 start "" "http://localhost:8000"
 set "STATUS_SERVER=OK"
 echo [%date% %time%]   [OK] Server diluncurkan, browser dibuka. >> "%LOGFILE%"
