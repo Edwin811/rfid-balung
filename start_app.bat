@@ -14,12 +14,10 @@ echo     SISTEM PRESENSI BIOMETRIK DAN RFID DESA BALUNGLOR
 echo ===============================================================
 echo.
 
-:: Bersihkan proses sebelumnya agar port 80, 443, dan 8000 tidak bentrok
-taskkill /F /IM httpd.exe >nul 2>&1
-taskkill /F /IM php.exe >nul 2>&1
-echo [%date% %time%] Proses httpd dan php sebelumnya dihentikan. >> "%LOGFILE%"
+:: 1. Hentikan PHP built-in server lama agar port 8000 tidak bentrok
+powershell -Command "Get-Process -Name php -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*artisan serve*' -or $_.CommandLine -like '*0.0.0.0:8000*' } | Stop-Process -Force" >nul 2>&1
 
-:: 1. Auto-Start MySQL Lokal dengan retry loop
+:: 2. Auto-Start / Cek MySQL Lokal dengan retry loop
 echo [*] Memeriksa database MySQL...
 set "MYSQL_READY=0"
 
@@ -35,7 +33,7 @@ if "%MYSQL_READY%"=="0" (
     echo [%date% %time%] Mencoba menyalakan MySQL... >> "%LOGFILE%"
     net start mysql >nul 2>&1
     if !errorLevel! neq 0 (
-        for %%L in (C D E) do (
+        for %%L in (C D E F) do (
             for /d %%D in (%%L:\laragon\bin\mysql\mysql-*) do (
                 if exist "%%D\bin\mysqld.exe" (
                     echo [%date% %time%] Ditemukan mysqld: %%D\bin\mysqld.exe >> "%LOGFILE%"
@@ -49,8 +47,8 @@ if "%MYSQL_READY%"=="0" (
         )
     )
 
-    :: Retry loop - tunggu MySQL siap (max 20 detik)
-    for /L %%I in (1,1,10) do (
+    :: Retry loop - tunggu MySQL siap (max 10 detik)
+    for /L %%I in (1,1,5) do (
         if "!MYSQL_READY!"=="0" (
             powershell -Command "Start-Sleep -Seconds 2" >nul 2>&1
             powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1
@@ -64,26 +62,25 @@ if "%MYSQL_READY%"=="0" (
 )
 
 if "%MYSQL_READY%"=="0" (
-    echo [ERROR] MySQL gagal diaktifkan! Pastikan Laragon sudah Start.
-    echo [%date% %time%] [ERROR] MySQL gagal aktif setelah 10 percobaan! >> "%LOGFILE%"
-    pause
-    exit /b 1
+    echo [WARNING] MySQL di port 3306 belum terdeteksi.
+    echo           Jika database belum aktif, silakan klik tombol Start All di Laragon.
+    echo [%date% %time%] [WARNING] MySQL belum terdeteksi. >> "%LOGFILE%"
 )
 
-:: 2. Cek dan Deteksi PHP di Laragon atau XAMPP jika belum ada di PATH
+:: 3. Cek dan Deteksi PHP di Laragon atau XAMPP jika belum ada di PATH
 where php >nul 2>&1
 if %errorLevel% neq 0 (
-    for %%L in (C D E) do (
+    for %%L in (C D E F) do (
         for /d %%D in (%%L:\laragon\bin\php\php-*) do (
             if exist "%%D\php.exe" (
-                set "PATH=%%D;%PATH%"
+                set "PATH=%%D;!PATH!"
                 echo [%date% %time%] PHP ditemukan: %%D >> "%LOGFILE%"
             )
         )
     )
-    for %%L in (C D E) do (
+    for %%L in (C D E F) do (
         if exist "%%L:\xampp\php\php.exe" (
-            set "PATH=%%L:\xampp\php;%PATH%"
+            set "PATH=%%L:\xampp\php;!PATH!"
             echo [%date% %time%] PHP ditemukan: %%L:\xampp\php >> "%LOGFILE%"
         )
     )
@@ -92,81 +89,59 @@ if %errorLevel% neq 0 (
 where php >nul 2>&1
 if %errorLevel% neq 0 (
     echo [ERROR] PHP tidak ditemukan di sistem!
+    echo         Pastikan Laragon sudah terpasang.
     echo [%date% %time%] [ERROR] PHP tidak ditemukan! >> "%LOGFILE%"
     pause
     exit /b 1
 )
 echo [OK] PHP siap.
 
-:: 3. Optimasi Cache Laravel
+:: 4. Deteksi IP Lokal Komputer untuk Akses dari HP/Laptop Lain
+set "LOCAL_IP="
+for /f "tokens=*" %%I in ('powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike '*Loopback*' -and $_.IPAddress -notlike '169.254*' -and $_.IPAddress -notlike '127.*' } | Select-Object -First 1).IPAddress" 2^>nul') do (
+    set "LOCAL_IP=%%I"
+)
+if not defined LOCAL_IP set "LOCAL_IP=127.0.0.1"
+
+:: 5. Optimasi Cache Laravel
 echo [*] Mengoptimalkan cache aplikasi...
 php artisan config:cache >> "%LOGFILE%" 2>&1
 php artisan route:cache >> "%LOGFILE%" 2>&1
 php artisan view:cache >> "%LOGFILE%" 2>&1
-echo [%date% %time%] Cache dioptimalkan. >> "%LOGFILE%"
+echo [OK] Cache siap.
 
-:: 4. Cari dan Jalankan Apache Laragon dengan SSL
-set "APACHE_DIR="
-for %%L in (C D E) do (
-    for /d %%A in (%%L:\laragon\bin\apache\httpd-*) do (
-        if exist "%%A\bin\httpd.exe" (
-            set "APACHE_DIR=%%A"
-        )
-    )
-)
-
-if not defined APACHE_DIR goto RUN_PHP_FALLBACK
-set "APACHE_EXE=%APACHE_DIR%\bin\httpd.exe"
-
-:: Pastikan nghttp2.dll di Apache sinkron dengan PHP
-for %%L in (C D E) do (
-    for /d %%P in (%%L:\laragon\bin\php\php-*) do (
-        if exist "%%P\nghttp2.dll" (
-            copy /y "%%P\nghttp2.dll" "%APACHE_DIR%\bin\nghttp2.dll" >nul 2>&1
-        )
-    )
-)
-
-echo.
-echo ===============================================================
-echo [OK] Web Server Apache (HTTPS dan HTTP) BERHASIL DIAKTIFKAN!
-echo ===============================================================
-echo Alamat Akses Resmi:
-echo  - https://presensi.balunglor.desa.id  (Aman dengan Gembok SSL)
-echo  - http://presensi.balunglor.desa.id:8000
-echo  - http://localhost:8000
-echo ===============================================================
-echo [%date% %time%] Apache dimulai: %APACHE_EXE% >> "%LOGFILE%"
-
+:: 6. Mulai Layanan Auto-Sync Mesin ZKTeco di Background
 echo [*] Memulai Layanan Auto-Sync Mesin ZKTeco di background...
 echo [%date% %time%] Memulai ZK Daemon via start_zk_daemon.vbs >> "%LOGFILE%"
-wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
+if exist "%~dp0scripts\start_zk_daemon.vbs" (
+    wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
+)
 
+:: 7. Tampilkan Alamat dan Jalankan Server di Port 8000
+echo.
+echo ===============================================================
+echo [BERHASIL] SERVER PRESENSI DESA BALUNGLOR AKTIF!
+echo ===============================================================
+echo  Akses dari PC Ini:
+echo    - http://localhost:8000
+echo    - http://127.0.0.1:8000
+echo.
+echo  Akses dari HP / Laptop Lain (Satu Wi-Fi):
+echo    - http://!LOCAL_IP!:8000
+echo ===============================================================
 echo.
 echo Server sedang berjalan...
 echo (Jangan tutup jendela ini agar website tetap aktif)
 echo (Untuk mematikan server, Anda bisa menutup jendela ini atau jalankan stop_app.bat)
-echo (Log server: server_log.txt)
 echo.
-"%APACHE_EXE%" -d "%APACHE_DIR%" 2>> "%LOGFILE%"
-echo [NOTE] Apache terhenti. Mencoba menyalakan server PHP built-in...
-echo [%date% %time%] Apache terhenti, fallback ke PHP built-in. >> "%LOGFILE%"
 
-:RUN_PHP_FALLBACK
-echo [NOTE] Menjalankan PHP Built-in Server...
-echo [%date% %time%] Memulai PHP Built-in Server di port 8000. >> "%LOGFILE%"
-
-echo [*] Memulai Layanan Auto-Sync Mesin ZKTeco di background...
-wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
-
-php artisan serve --host=0.0.0.0 --port=8000 2>> "%LOGFILE%"
+php artisan serve --host=0.0.0.0 --port=8000
 if not "%errorLevel%"=="0" (
-    echo [NOTE] Menjalankan php built-in server fallback...
-    echo [%date% %time%] artisan serve gagal, fallback ke php -S. >> "%LOGFILE%"
-    set PHP_CLI_SERVER_WORKERS=4
-    php -S 0.0.0.0:8000 -t public 2>> "%LOGFILE%"
+    echo.
+    echo [NOTE] Menjalankan server alternatif php -S...
+    php -S 0.0.0.0:8000 -t public
 )
+
 echo.
 echo Server terhenti.
-echo [%date% %time%] Server terhenti. >> "%LOGFILE%"
 pause
