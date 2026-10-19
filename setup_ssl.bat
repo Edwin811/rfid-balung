@@ -9,17 +9,21 @@ echo   Domain: https://presensi.balunglor.desa.id
 echo ===============================================================
 echo.
 
-:: 1. Meminta Izin Administrator Windows
-net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo [*] Meminta izin Administrator Windows untuk mendaftarkan sertifikat...
-    powershell -Command "Start-Process cmd.exe -ArgumentList '/k `\"\"%~f0\"`\"' -Verb RunAs"
-    exit /b
+:: 1. Meminta Izin Administrator Windows (skip jika dipanggil dari installer)
+if not defined CALLED_FROM_INSTALLER (
+    net session >nul 2>&1
+    if %errorLevel% neq 0 (
+        echo [*] Meminta izin Administrator Windows untuk mendaftarkan sertifikat...
+        powershell -Command "Start-Process cmd.exe -ArgumentList '/k `\"\"%~f0\"`\"' -Verb RunAs"
+        exit /b
+    )
 )
 
-:: 2. Matikan proses web server lama agar tidak bentrok
-taskkill /F /IM php.exe >nul 2>&1
-taskkill /F /IM httpd.exe >nul 2>&1
+:: 2. Matikan proses web server lama agar tidak bentrok (skip jika dari installer)
+if not defined CALLED_FROM_INSTALLER (
+    taskkill /F /IM php.exe >nul 2>&1
+    taskkill /F /IM httpd.exe >nul 2>&1
+)
 
 :: 3. Daftarkan Domain ke Windows hosts
 set "HOSTS_FILE=%WINDIR%\System32\drivers\etc\hosts"
@@ -46,7 +50,6 @@ for %%L in (C D E F) do (
 echo [ERROR] Laragon tidak ditemukan di Drive C, D, E, atau F!
 echo         SSL membutuhkan Apache dari Laragon.
 echo         Silakan install Laragon terlebih dahulu.
-pause
 exit /b 1
 
 :LARAGON_FOUND
@@ -57,7 +60,6 @@ powershell -ExecutionPolicy Bypass -File "%~dp0scripts\generate_ssl.ps1" -Larago
 if %errorLevel% neq 0 (
     echo [ERROR] Gagal memasang sertifikat SSL.
     echo         Lihat pesan error di atas untuk detail.
-    pause
     exit /b 1
 )
 
