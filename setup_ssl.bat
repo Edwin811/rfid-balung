@@ -153,5 +153,4 @@ echo  - https://presensi.balunglor.desa.id  (Aman dengan Gembok SSL)
 echo  - http://presensi.balunglor.desa.id:8000
 echo ===============================================================
 echo.
-pause
-exit
+exit /b 0
