@@ -31,24 +31,37 @@ if "%errorLevel%"=="0" (
 if "%MYSQL_READY%"=="0" (
     echo [*] Mengaktifkan database MySQL di background...
     echo [%date% %time%] Mencoba menyalakan MySQL... >> "%LOGFILE%"
-    net start mysql >nul 2>&1
-    if !errorLevel! neq 0 (
+    net start MySQL >nul 2>&1
+    if !errorLevel! neq 0 net start mysql >nul 2>&1
+    powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1
+    if "!errorLevel!"=="0" set "MYSQL_READY=1"
+
+    if "!MYSQL_READY!"=="0" (
         for %%L in (C D E F) do (
             for /d %%D in (%%L:\laragon\bin\mysql\mysql-*) do (
                 if exist "%%D\bin\mysqld.exe" (
                     echo [%date% %time%] Ditemukan mysqld: %%D\bin\mysqld.exe >> "%LOGFILE%"
                     if exist "%%D\my.ini" (
-                        start "" /B "%%D\bin\mysqld.exe" --defaults-file="%%D\my.ini" >nul 2>&1
+                        "%%D\bin\mysqld.exe" --install MySQL --defaults-file="%%D\my.ini" >nul 2>&1
                     ) else (
-                        start "" /B "%%D\bin\mysqld.exe" --console >nul 2>&1
+                        "%%D\bin\mysqld.exe" --install MySQL >nul 2>&1
+                    )
+                    net start MySQL >nul 2>&1
+                    powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1
+                    if "!errorLevel!" neq "0" (
+                        if exist "%%D\my.ini" (
+                            powershell -Command "Start-Process '%%D\bin\mysqld.exe' -ArgumentList '--defaults-file=\"\"%%D\my.ini\"\"' -WindowStyle Hidden" >nul 2>&1
+                        ) else (
+                            powershell -Command "Start-Process '%%D\bin\mysqld.exe' -ArgumentList '--console' -WindowStyle Hidden" >nul 2>&1
+                        )
                     )
                 )
             )
         )
     )
 
-    :: Retry loop - tunggu MySQL siap (max 10 detik)
-    for /L %%I in (1,1,5) do (
+    :: Retry loop - tunggu MySQL siap (max 16 detik)
+    for /L %%I in (1,1,8) do (
         if "!MYSQL_READY!"=="0" (
             powershell -Command "Start-Sleep -Seconds 2" >nul 2>&1
             powershell -Command "$c = Test-NetConnection -ComputerName 127.0.0.1 -Port 3306 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($c) { exit 0 } else { exit 1 }" >nul 2>&1

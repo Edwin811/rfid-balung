@@ -108,13 +108,14 @@ Set-Content -Path $caCnf -Value $caCnfContent -Encoding ASCII
 # Set OPENSSL_CONF agar Apache OpenSSL tidak error mencari config default
 $env:OPENSSL_CONF = $caCnf
 $sslErrorLog = Join-Path $laragonSslDir "ssl_error.log"
+$binDir = Split-Path $opensslExe -Parent
 
-# Generate Root CA key + cert
-$sslOutput = & $opensslExe req -x509 -new -nodes -newkey rsa:2048 -keyout $caKey -out $caCrt -days 3650 -config $caCnf 2>&1
-$sslOutput | Out-File -FilePath $sslErrorLog -Encoding ASCII
+# Generate Root CA key + cert via Start-Process di dalam direktori bin OpenSSL
+$caArgs = @("req", "-x509", "-new", "-nodes", "-newkey", "rsa:2048", "-keyout", $caKey, "-out", $caCrt, "-days", "3650", "-config", $caCnf)
+$pCa = Start-Process -FilePath $opensslExe -ArgumentList $caArgs -WorkingDirectory $binDir -NoNewWindow -Wait -PassThru -RedirectStandardError $sslErrorLog
 
 if (-not (Test-Path $caCrt) -or (Get-Item $caCrt).Length -eq 0) {
-    Write-Host "[ERROR] Gagal membuat Root CA!" -ForegroundColor Red
+    Write-Host "[ERROR] Gagal membuat Root CA! (ExitCode: $($pCa.ExitCode))" -ForegroundColor Red
     Write-Host "        Detail error:" -ForegroundColor Yellow
     if (Test-Path $sslErrorLog) {
         Get-Content $sslErrorLog | ForEach-Object { Write-Host "        $_" -ForegroundColor Yellow }
@@ -169,15 +170,15 @@ Set-Content -Path $serverCnf -Value $serverCnfContent -Encoding ASCII
 $env:OPENSSL_CONF = $serverCnf
 
 # Generate Server Private Key & CSR
-$sslOutput = & $opensslExe req -new -nodes -newkey rsa:2048 -keyout $serverKey -out $serverCsr -config $serverCnf 2>&1
-$sslOutput | Out-File -FilePath $sslErrorLog -Encoding ASCII -Append
+$csrArgs = @("req", "-new", "-nodes", "-newkey", "rsa:2048", "-keyout", $serverKey, "-out", $serverCsr, "-config", $serverCnf)
+$pCsr = Start-Process -FilePath $opensslExe -ArgumentList $csrArgs -WorkingDirectory $binDir -NoNewWindow -Wait -PassThru -RedirectStandardError $sslErrorLog
 
 # Sign Server Certificate menggunakan Root CA (365 hari, standar Chromium)
-$sslOutput = & $opensslExe x509 -req -in $serverCsr -CA $caCrt -CAkey $caKey -CAcreateserial -out $serverCrt -days 365 -extfile $serverCnf -extensions server_ext -sha256 2>&1
-$sslOutput | Out-File -FilePath $sslErrorLog -Encoding ASCII -Append
+$signArgs = @("x509", "-req", "-in", $serverCsr, "-CA", $caCrt, "-CAkey", $caKey, "-CAcreateserial", "-out", $serverCrt, "-days", "365", "-extfile", $serverCnf, "-extensions", "server_ext", "-sha256")
+$pSign = Start-Process -FilePath $opensslExe -ArgumentList $signArgs -WorkingDirectory $binDir -NoNewWindow -Wait -PassThru -RedirectStandardError $sslErrorLog
 
 if (-not (Test-Path $serverCrt) -or -not (Test-Path $serverKey)) {
-    Write-Host "[ERROR] Gagal membuat file sertifikat SSL server!" -ForegroundColor Red
+    Write-Host "[ERROR] Gagal membuat file sertifikat SSL server! (ExitCode: $($pSign.ExitCode))" -ForegroundColor Red
     Write-Host "        Detail error:" -ForegroundColor Yellow
     if (Test-Path $sslErrorLog) {
         Get-Content $sslErrorLog | ForEach-Object { Write-Host "        $_" -ForegroundColor Yellow }
