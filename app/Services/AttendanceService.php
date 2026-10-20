@@ -52,15 +52,30 @@ class AttendanceService
 
     /**
      * Dapatkan path executable Python yang valid di Windows.
-     * Mencakup Laragon, AppData (User Python), Program Files, dan PATH global.
+     * Mencakup .env langsung, Laragon, AppData (User Python), Program Files, dan PATH global.
      */
     public static function getPythonBinary(): string
     {
+        // 1. Baca langsung dari .env jika pengguna menentukan PYTHON_BIN
+        if (file_exists(base_path('.env'))) {
+            $lines = @file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (str_starts_with($line, 'PYTHON_BIN=')) {
+                    $val = trim(explode('=', $line, 2)[1]);
+                    $val = trim($val, "\"' ");
+                    if (!empty($val) && file_exists($val)) {
+                        return '"' . str_replace('/', '\\', $val) . '"';
+                    }
+                }
+            }
+        }
+
         $configured = config('zkteco.python_bin');
         if (!empty($configured) && $configured !== 'python') {
             $cleanPath = trim($configured, '"\' ');
             if (file_exists($cleanPath)) {
-                return '"' . $cleanPath . '"';
+                return '"' . str_replace('/', '\\', $cleanPath) . '"';
             }
         }
 
@@ -72,6 +87,7 @@ class AttendanceService
                 'E:/laragon/bin/python/*/python.exe',
                 'F:/laragon/bin/python/*/python.exe',
                 'C:/laragon/bin/python/python.exe',
+                'D:/laragon/bin/python/python.exe',
                 // Python user install (AppData) - paling umum di Windows 10/11
                 'C:/Users/*/AppData/Local/Programs/Python/Python*/python.exe',
                 'D:/Users/*/AppData/Local/Programs/Python/Python*/python.exe',
