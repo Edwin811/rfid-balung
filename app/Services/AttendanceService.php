@@ -78,6 +78,23 @@ class AttendanceService
                 return true;
             }
 
+            // 3. Coba UDP ZKTeco Handshake (protokol bawaan mesin ZKTeco via port 4370)
+            $udp = @fsockopen("udp://{$ip}", $port, $errno, $errstr, 0.8);
+            if ($udp) {
+                stream_set_timeout($udp, 0, 600000); // 600ms
+                @fwrite($udp, "\xe8\x03\x16\xfc\x00\x00\x01\x00");
+                $reply = @fread($udp, 8);
+                @fclose($udp);
+                if (!empty($reply)) {
+                    return true;
+                }
+            }
+
+            // 4. Cek aktivitas sinkronisasi terbaru (jika ada log masuk 3 menit terakhir, mesin aktif)
+            if (\App\Models\DeviceLog::where('created_at', '>=', now()->subMinutes(3))->exists()) {
+                return true;
+            }
+
             return false;
         });
     }
