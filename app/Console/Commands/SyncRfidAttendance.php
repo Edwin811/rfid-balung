@@ -17,18 +17,7 @@ class SyncRfidAttendance extends Command
         $this->info('Memulai sinkronisasi data presensi dari mesin biometrik & RFID ZKTeco...');
         
         $pythonScript = base_path('scripts/fetch_presensi.py');
-        $pythonBin = config('zkteco.python_bin', 'python');
-
-        // Otomatis deteksi Python di Laragon (semua drive) jika python biasa tidak ada di PATH
-        if ($pythonBin === 'python') {
-            foreach (['C', 'D', 'E', 'F'] as $drive) {
-                $candidates = glob("{$drive}:/laragon/bin/python/*/python.exe");
-                if (!empty($candidates)) {
-                    $pythonBin = '"' . str_replace('/', '\\', $candidates[0]) . '"';
-                    break;
-                }
-            }
-        }
+        $pythonBin = AttendanceService::getPythonBinary();
 
         $command = "{$pythonBin} " . escapeshellarg($pythonScript) . " 2>&1";
         $rawOutput = shell_exec($command);

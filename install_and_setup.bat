@@ -270,7 +270,25 @@ if not "%errorLevel%"=="0" (
         for /d %%P in (%%L:\laragon\bin\python\*) do (
             if exist "%%P\python.exe" (
                 set "PATH=%%P;%%P\Scripts;!PATH!"
-                echo [%date% %time%]   Python ditemukan di: %%P >> "%LOGFILE%"
+                echo [%date% %time%]   Python Laragon ditemukan di: %%P >> "%LOGFILE%"
+            )
+        )
+        for /d %%P in ("%%L:\Users\*\AppData\Local\Programs\Python\Python*") do (
+            if exist "%%P\python.exe" (
+                set "PATH=%%P;%%P\Scripts;!PATH!"
+                echo [%date% %time%]   Python User AppData ditemukan di: %%P >> "%LOGFILE%"
+            )
+        )
+        for /d %%P in (%%L:\Python*) do (
+            if exist "%%P\python.exe" (
+                set "PATH=%%P;%%P\Scripts;!PATH!"
+                echo [%date% %time%]   Python System ditemukan di: %%P >> "%LOGFILE%"
+            )
+        )
+        for /d %%P in ("%%L:\Program Files\Python*") do (
+            if exist "%%P\python.exe" (
+                set "PATH=%%P;%%P\Scripts;!PATH!"
+                echo [%date% %time%]   Python Program Files ditemukan di: %%P >> "%LOGFILE%"
             )
         )
     )

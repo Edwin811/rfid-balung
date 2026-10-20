@@ -163,7 +163,7 @@ class PegawaiController extends Controller
     public function syncToMachine()
     {
         $pythonScript = base_path('scripts/push_users_to_machine.py');
-        $pythonBin = env('PYTHON_BIN', 'python');
+        $pythonBin = \App\Services\AttendanceService::getPythonBinary();
         $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
         $output = shell_exec($command);
 
@@ -175,7 +175,7 @@ class PegawaiController extends Controller
     public function pullFromMachine()
     {
         $pythonScript = base_path('scripts/pull_users_from_machine.py');
-        $pythonBin = env('PYTHON_BIN', 'python');
+        $pythonBin = \App\Services\AttendanceService::getPythonBinary();
         $command = escapeshellcmd("{$pythonBin} {$pythonScript}") . " 2>&1";
         $rawOutput = shell_exec($command);
 
@@ -252,7 +252,7 @@ class PegawaiController extends Controller
         $pegawai = Pegawai::withTrashed()->findOrFail($id);
 
         $pythonScript = base_path('scripts/delete_fingerprint.py');
-        $pythonBin = env('PYTHON_BIN', 'python');
+        $pythonBin = \App\Services\AttendanceService::getPythonBinary();
         $command = escapeshellcmd("{$pythonBin} {$pythonScript} {$pegawai->id_mesin}") . " 2>&1";
         $rawOutput = shell_exec($command);
 
@@ -282,7 +282,7 @@ class PegawaiController extends Controller
     {
         try {
             $pythonScript = base_path('scripts/push_users_to_machine.py');
-            $pythonBin = config('zkteco.python_bin', 'python');
+            $pythonBin = \App\Services\AttendanceService::getPythonBinary();
 
             if (PHP_OS_FAMILY === 'Windows') {
                 $command = 'start /B ' . escapeshellcmd("{$pythonBin} {$pythonScript}") . ' > NUL 2>&1';
