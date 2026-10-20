@@ -51,6 +51,53 @@ class AttendanceService
     }
 
     /**
+     * Dapatkan path executable Python yang valid di Windows.
+     * Mencakup Laragon, AppData (User Python), Program Files, dan PATH global.
+     */
+    public static function getPythonBinary(): string
+    {
+        $configured = config('zkteco.python_bin');
+        if (!empty($configured) && $configured !== 'python') {
+            $cleanPath = trim($configured, '"\' ');
+            if (file_exists($cleanPath)) {
+                return '"' . $cleanPath . '"';
+            }
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $patterns = [
+                // Laragon di semua drive
+                'C:/laragon/bin/python/*/python.exe',
+                'D:/laragon/bin/python/*/python.exe',
+                'E:/laragon/bin/python/*/python.exe',
+                'F:/laragon/bin/python/*/python.exe',
+                'C:/laragon/bin/python/python.exe',
+                // Python user install (AppData) - paling umum di Windows 10/11
+                'C:/Users/*/AppData/Local/Programs/Python/Python*/python.exe',
+                'D:/Users/*/AppData/Local/Programs/Python/Python*/python.exe',
+                // Python standard system install
+                'C:/Program Files/Python*/python.exe',
+                'C:/Program Files (x86)/Python*/python.exe',
+                'C:/Python*/python.exe',
+                'D:/Python*/python.exe',
+            ];
+
+            foreach ($patterns as $pattern) {
+                $matches = glob($pattern);
+                if (!empty($matches)) {
+                    foreach ($matches as $match) {
+                        if (file_exists($match)) {
+                            return '"' . str_replace('/', '\\', $match) . '"';
+                        }
+                    }
+                }
+            }
+        }
+
+        return 'python';
+    }
+
+    /**
      * Deteksi koneksi mesin ZKTeco secara cerdas & realtime.
      * Prioritas:
      * 1. Cache HTTP heartbeat dari daemon Python (paling akurat)

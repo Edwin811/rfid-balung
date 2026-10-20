@@ -7,19 +7,35 @@ projectDir = fso.GetParentFolderName(scriptDir)
 pythonExe = "python"
 found = False
 
-' Cari Python di Laragon (C, D, E, F) agar tidak terhambat PATH Windows
-For Each drive In Array("C", "D", "E", "F")
-    If fso.FolderExists(drive & ":\laragon\bin\python") Then
-        For Each subFolder In fso.GetFolder(drive & ":\laragon\bin\python").SubFolders
-            If fso.FileExists(subFolder.Path & "\python.exe") Then
-                pythonExe = """" & subFolder.Path & "\python.exe"""
-                found = True
-                Exit For
-            End If
-        Next
-    End If
-    If found Then Exit For
-Next
+' Cari Python di Laragon, AppData, atau Program Files agar tidak terhambat PATH Windows
+Dim userProfile, appDataPy
+userProfile = WshShell.ExpandEnvironmentStrings("%USERPROFILE%")
+appDataPy = userProfile & "\AppData\Local\Programs\Python"
+
+If fso.FolderExists(appDataPy) Then
+    For Each subFolder In fso.GetFolder(appDataPy).SubFolders
+        If fso.FileExists(subFolder.Path & "\python.exe") Then
+            pythonExe = """" & subFolder.Path & "\python.exe"""
+            found = True
+            Exit For
+        End If
+    Next
+End If
+
+If Not found Then
+    For Each drive In Array("C", "D", "E", "F")
+        If fso.FolderExists(drive & ":\laragon\bin\python") Then
+            For Each subFolder In fso.GetFolder(drive & ":\laragon\bin\python").SubFolders
+                If fso.FileExists(subFolder.Path & "\python.exe") Then
+                    pythonExe = """" & subFolder.Path & "\python.exe"""
+                    found = True
+                    Exit For
+                End If
+            Next
+        End If
+        If found Then Exit For
+    Next
+End If
 
 ' Jalankan python scripts/fetch_presensi.py --daemon secara tersembunyi dengan logging
 WshShell.Run "cmd /c cd /d """ & projectDir & """ && " & pythonExe & " scripts\fetch_presensi.py --daemon >> zk_daemon.log 2>&1", 0, False

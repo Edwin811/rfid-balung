@@ -130,13 +130,6 @@ class DashboardController extends Controller
         $lastLog = DeviceLog::latest('timestamp_absen')->first();
         $isDeviceOnline = AttendanceService::isDeviceOnline();
 
-        // Safety net auto-sync: Jika mesin online dan belum sync dalam 15 detik terakhir
-        if ($isDeviceOnline && \Illuminate\Support\Facades\Cache::add('auto_rfid_sync_throttle', true, 15)) {
-            try {
-                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-            } catch (\Throwable $e) {}
-        }
-
         return response()->json([
             'status' => 'success',
             'timestamp' => now()->toTimeString(),

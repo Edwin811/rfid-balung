@@ -109,12 +109,30 @@ if %errorLevel% neq 0 (
 )
 echo [OK] PHP siap.
 
-:: 3b. Pastikan Python Laragon masuk ke PATH agar artisan dan daemon bisa memanggil python
+:: 3b. Pastikan Python (Laragon, User AppData, System) masuk ke PATH agar artisan dan daemon bisa memanggil python
 for %%L in (C D E F) do (
     for /d %%P in (%%L:\laragon\bin\python\*) do (
         if exist "%%P\python.exe" (
             set "PATH=%%P;%%P\Scripts;!PATH!"
             echo [%date% %time%] Python Laragon ditemukan: %%P >> "%LOGFILE%"
+        )
+    )
+    for /d %%P in ("%%L:\Users\*\AppData\Local\Programs\Python\Python*") do (
+        if exist "%%P\python.exe" (
+            set "PATH=%%P;%%P\Scripts;!PATH!"
+            echo [%date% %time%] Python User AppData ditemukan: %%P >> "%LOGFILE%"
+        )
+    )
+    for /d %%P in (%%L:\Python*) do (
+        if exist "%%P\python.exe" (
+            set "PATH=%%P;%%P\Scripts;!PATH!"
+            echo [%date% %time%] Python System ditemukan: %%P >> "%LOGFILE%"
+        )
+    )
+    for /d %%P in ("%%L:\Program Files\Python*") do (
+        if exist "%%P\python.exe" (
+            set "PATH=%%P;%%P\Scripts;!PATH!"
+            echo [%date% %time%] Python Program Files ditemukan: %%P >> "%LOGFILE%"
         )
     )
 )
