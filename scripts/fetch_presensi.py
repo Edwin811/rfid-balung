@@ -123,6 +123,28 @@ def kirim_ke_laravel(logs):
     sys.stdout.flush()
     return False
 
+def kirim_heartbeat():
+    """Mengirim ping heartbeat ke Laravel API agar web dashboard selalu tahu status koneksi online"""
+    _, _, _, api_url, secret_key = get_config()
+    base_api = api_url.replace('/attendance', '/heartbeat')
+    targets = [
+        base_api,
+        'http://127.0.0.1:8000/api/adms/heartbeat',
+        'http://localhost:8000/api/adms/heartbeat',
+        'http://127.0.0.1/api/adms/heartbeat',
+        'http://localhost/api/adms/heartbeat'
+    ]
+    unique_targets = list(dict.fromkeys(targets))
+
+    for target_url in unique_targets:
+        try:
+            res = requests.post(target_url, json={'secret_key': secret_key}, headers={'Content-Type': 'application/json'}, timeout=1)
+            if res.status_code == 200:
+                return True
+        except Exception:
+            continue
+    return False
+
 def daemon_mode():
     """
     Background Daemon Mode (Realtime Hybrid):
@@ -144,6 +166,7 @@ def daemon_mode():
             zk, conn = get_connection(timeout=5)
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung ke mesin ZKTeco {ip}!")
             sys.stdout.flush()
+            kirim_heartbeat()
 
             known_keys = set()
 
@@ -188,13 +211,16 @@ def daemon_mode():
             while True:
                 time.sleep(2)
 
-                # Tulis heartbeat agar Laravel tahu daemon masih hidup & terhubung
+                # 1. Tulis file heartbeat lokal
                 try:
                     os.makedirs(os.path.dirname(heartbeat_file), exist_ok=True)
                     with open(heartbeat_file, 'w') as hf:
                         hf.write(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                 except Exception:
                     pass
+
+                # 2. Kirim HTTP heartbeat langsung ke Laravel API
+                kirim_heartbeat()
 
                 # Cek secara berkala apakah IP mesin diubah di .env
                 check_env_counter += 1

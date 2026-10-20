@@ -27,6 +27,25 @@ class AdmsController extends Controller
         ]);
     }
 
+    public function heartbeat(Request $request): JsonResponse
+    {
+        $secretKey = $request->input('secret_key') ?? $request->header('X-ADMS-KEY') ?? $request->query('secret_key');
+        $expectedKey = config('zkteco.adms_secret_key', 'balunglor_secret_2026');
+
+        if ($secretKey !== $expectedKey) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized key'], 401);
+        }
+
+        \Illuminate\Support\Facades\Cache::put('zk_device_online_heartbeat', time(), 20);
+        \Illuminate\Support\Facades\Cache::put('zk_device_online_status', true, 20);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Heartbeat received',
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+    }
+
     public function handleAttendance(Request $request): JsonResponse
     {
         $secretKey = $request->input('secret_key') ?? $request->header('X-ADMS-KEY');
