@@ -12,14 +12,53 @@ use Illuminate\Support\Facades\Log;
 class AttendanceService
 {
     /**
-     * Fast availability check with 4s caching
+     * Ambil IP mesin langsung dari .env jika ada (agar selalu sinkron meski config di-cache)
+     */
+    public static function getDeviceIp(): string
+    {
+        if (file_exists(base_path('.env'))) {
+            $lines = @file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (str_starts_with($line, 'ZKT_IP=')) {
+                    $val = trim(explode('=', $line, 2)[1]);
+                    $val = trim($val, "\"' ");
+                    if (!empty($val)) {
+                        return $val;
+                    }
+                }
+            }
+        }
+        return config('zkteco.ip', '192.168.1.23');
+    }
+
+    public static function getDevicePort(): int
+    {
+        if (file_exists(base_path('.env'))) {
+            $lines = @file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (str_starts_with($line, 'ZKT_PORT=')) {
+                    $val = trim(explode('=', $line, 2)[1]);
+                    $val = trim($val, "\"' ");
+                    if (!empty($val)) {
+                        return (int) $val;
+                    }
+                }
+            }
+        }
+        return (int) config('zkteco.port', 4370);
+    }
+
+    /**
+     * Fast availability check with 3s caching
      * Mendukung deteksi mesin baik via ICMP ping maupun TCP/UDP socket.
      */
     public static function isDeviceOnline(): bool
     {
-        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 4, function () {
-            $ip = config('zkteco.ip', '192.168.1.23');
-            $port = (int) config('zkteco.port', 4370);
+        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 3, function () {
+            $ip = self::getDeviceIp();
+            $port = self::getDevicePort();
 
             // 1. Coba ping cepat (200ms) - cocok untuk mesin dengan protokol UDP
             if (PHP_OS_FAMILY === 'Windows') {

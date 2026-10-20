@@ -22,18 +22,18 @@ def load_env():
                         parts = line.split('=', 1)
                         key = parts[0].strip()
                         val = parts[1].strip().strip('"\'')
-                        if key not in os.environ or not os.environ[key]:
-                            os.environ[key] = val
+                        os.environ[key] = val  # Selalu perbarui agar perubahan IP langsung terbaca
         except Exception:
             pass
 
-load_env()
-
-IP_MESIN = os.getenv('ZKT_IP', '192.168.1.23')
-PORT = int(os.getenv('ZKT_PORT', 4370))
-PASSWORD = int(os.getenv('ZKT_PASSWORD', 0))
-API_URL = os.getenv('LARAVEL_API_URL', 'http://127.0.0.1:8000/api/adms/attendance')
-SECRET_KEY = os.getenv('ADMS_SECRET_KEY', 'balunglor_secret_2026')
+def get_config():
+    load_env()
+    ip = os.getenv('ZKT_IP', '192.168.1.23')
+    port = int(os.getenv('ZKT_PORT', 4370))
+    password = int(os.getenv('ZKT_PASSWORD', 0))
+    api_url = os.getenv('LARAVEL_API_URL', 'http://127.0.0.1:8000/api/adms/attendance')
+    secret_key = os.getenv('ADMS_SECRET_KEY', 'balunglor_secret_2026')
+    return ip, port, password, api_url, secret_key
 
 def get_connection(timeout=4):
     """
@@ -41,11 +41,12 @@ def get_connection(timeout=4):
     Mencoba protokol TCP dan UDP.
     Mengabaikan ICMP OS ping (ommit_ping=True) agar tidak terhambat firewall Windows.
     """
+    ip, port, password, _, _ = get_config()
     last_err = None
     # Coba TCP lalu UDP
     for force_udp in [False, True]:
         try:
-            zk = ZK(IP_MESIN, port=PORT, timeout=timeout, password=PASSWORD, force_udp=force_udp, ommit_ping=True)
+            zk = ZK(ip, port=port, timeout=timeout, password=password, force_udp=force_udp, ommit_ping=True)
             conn = zk.connect()
             return zk, conn
         except Exception as e:
@@ -95,8 +96,9 @@ def fetch_attendance():
 
 def kirim_ke_laravel(logs):
     """Mengirim log presensi langsung ke API Laravel ADMS"""
+    _, _, _, api_url, secret_key = get_config()
     targets = [
-        API_URL,
+        api_url,
         'http://127.0.0.1:8000/api/adms/attendance',
         'http://localhost:8000/api/adms/attendance',
         'http://127.0.0.1/api/adms/attendance',
@@ -107,14 +109,18 @@ def kirim_ke_laravel(logs):
     for target_url in unique_targets:
         try:
             res = requests.post(target_url, json={
-                'secret_key': SECRET_KEY,
+                'secret_key': secret_key,
                 'logs': logs
             }, headers={'Content-Type': 'application/json'}, timeout=4)
 
             if res.status_code == 200:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] {len(logs)} log presensi sukses terkirim ke Laravel ({target_url})")
+                sys.stdout.flush()
                 return True
         except Exception:
             continue
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] Gagal mengirim {len(logs)} log presensi ke Laravel API")
+    sys.stdout.flush()
     return False
 
 def daemon_mode():
@@ -127,15 +133,16 @@ def daemon_mode():
        - Scan baru langsung di-push ke Laravel API secara instan (< 2 detik).
        - Menjaga koneksi tetap hidup tanpa membebani memori mesin.
     """
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] [*] Menjalankan ZKTeco Sync Daemon untuk mesin {IP_MESIN}:{PORT}...")
-    sys.stdout.flush()
-
     while True:
+        ip, port, _, _, _ = get_config()
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [*] Menjalankan ZKTeco Sync Daemon untuk mesin {ip}:{port}...")
+        sys.stdout.flush()
+
         zk = None
         conn = None
         try:
             zk, conn = get_connection(timeout=5)
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung ke mesin ZKTeco!")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung ke mesin ZKTeco {ip}!")
             sys.stdout.flush()
 
             known_keys = set()
@@ -170,8 +177,21 @@ def daemon_mode():
             sys.stdout.flush()
 
             consecutive_errors = 0
+            check_env_counter = 0
+
             while True:
                 time.sleep(2)
+
+                # Cek secara berkala apakah IP mesin diubah di .env
+                check_env_counter += 1
+                if check_env_counter >= 5:
+                    check_env_counter = 0
+                    current_env_ip, current_env_port, _, _, _ = get_config()
+                    if current_env_ip != ip or current_env_port != port:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] [CONFIG] Terdeteksi perubahan IP mesin di .env: {ip} -> {current_env_ip}. Menghubungkan ulang...")
+                        sys.stdout.flush()
+                        break
+
                 try:
                     current_attendances = conn.get_attendance()
                     consecutive_errors = 0
@@ -206,7 +226,7 @@ def daemon_mode():
                         break
 
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] Menghubungkan ke mesin {IP_MESIN}... ({e})")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] Menghubungkan ke mesin {ip}... ({e})")
             sys.stdout.flush()
             time.sleep(3)
         finally:

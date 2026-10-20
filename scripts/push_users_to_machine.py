@@ -20,8 +20,7 @@ def load_env():
                         parts = line.split('=', 1)
                         key = parts[0].strip()
                         val = parts[1].strip().strip('"\'')
-                        if key not in os.environ or not os.environ[key]:
-                            os.environ[key] = val
+                        os.environ[key] = val
         except Exception:
             pass
 
