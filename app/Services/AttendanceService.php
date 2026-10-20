@@ -51,47 +51,58 @@ class AttendanceService
     }
 
     /**
-     * Fast availability check with 3s caching
-     * Mendukung deteksi mesin baik via ICMP ping maupun TCP/UDP socket.
+     * Deteksi koneksi mesin ZKTeco.
+     *
+     * Strategi: Prioritaskan pengecekan berbasis AKTIVITAS (daemon heartbeat & DeviceLog)
+     * karena network probe (ping/TCP/UDP) tidak stabil ke mesin ZKTeco yang hanya pakai UDP.
+     * Cache 15 detik agar status tidak flicker.
      */
     public static function isDeviceOnline(): bool
     {
-        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 3, function () {
-            $ip = self::getDeviceIp();
-            $port = self::getDevicePort();
+        return \Illuminate\Support\Facades\Cache::remember('zk_device_online_status', 15, function () {
 
-            // 1. Coba ping (800ms) - cocok untuk mesin dengan protokol UDP / Wi-Fi
-            if (PHP_OS_FAMILY === 'Windows') {
-                $pingCmd = "ping -n 1 -w 800 " . escapeshellarg($ip);
-            } else {
-                $pingCmd = "ping -c 1 -W 1 " . escapeshellarg($ip);
-            }
-            @exec($pingCmd, $output, $resultCode);
-            if ($resultCode === 0) {
-                return true;
-            }
-
-            // 2. Coba TCP socket (1 detik) - cocok untuk mesin dengan protokol TCP
-            $fp = @fsockopen($ip, $port, $errno, $errstr, 1.0);
-            if ($fp) {
-                fclose($fp);
-                return true;
-            }
-
-            // 3. Coba UDP ZKTeco Handshake (protokol bawaan mesin ZKTeco via port 4370)
-            $udp = @fsockopen("udp://{$ip}", $port, $errno, $errstr, 0.8);
-            if ($udp) {
-                stream_set_timeout($udp, 0, 600000); // 600ms
-                @fwrite($udp, "\xe8\x03\x16\xfc\x00\x00\x01\x00");
-                $reply = @fread($udp, 8);
-                @fclose($udp);
-                if (!empty($reply)) {
-                    return true;
+            // 1. Cek heartbeat file dari daemon Python (paling reliable)
+            //    Daemon menulis timestamp setiap 2 detik polling cycle.
+            $heartbeatFile = base_path('storage/logs/zk_daemon_heartbeat.txt');
+            if (file_exists($heartbeatFile)) {
+                $lastBeat = @file_get_contents($heartbeatFile);
+                if ($lastBeat) {
+                    $lastBeat = trim($lastBeat);
+                    try {
+                        $beatTime = \Carbon\Carbon::parse($lastBeat);
+                        // Heartbeat dalam 2 menit terakhir = daemon aktif & terhubung
+                        if ($beatTime->greaterThanOrEqualTo(now()->subMinutes(2))) {
+                            return true;
+                        }
+                    } catch (\Throwable $e) {}
                 }
             }
 
-            // 4. Cek aktivitas sinkronisasi terbaru (jika ada log masuk 3 menit terakhir, mesin aktif)
-            if (\App\Models\DeviceLog::where('created_at', '>=', now()->subMinutes(3))->exists()) {
+            // 2. Cek aktivitas DeviceLog terbaru (jika ada log masuk 5 menit terakhir, mesin aktif)
+            if (\App\Models\DeviceLog::where('created_at', '>=', now()->subMinutes(5))->exists()) {
+                return true;
+            }
+
+            // 3. Cek proses daemon Python berjalan (Windows)
+            if (PHP_OS_FAMILY === 'Windows') {
+                $output = [];
+                @exec('tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2>NUL', $output);
+                foreach ($output as $line) {
+                    if (stripos($line, 'python') !== false) {
+                        return true;
+                    }
+                }
+            }
+
+            // 4. Fallback: coba ping singkat (hanya jika semua pengecekan di atas gagal)
+            $ip = self::getDeviceIp();
+            if (PHP_OS_FAMILY === 'Windows') {
+                $pingCmd = "ping -n 1 -w 500 " . escapeshellarg($ip);
+            } else {
+                $pingCmd = "ping -c 1 -W 1 " . escapeshellarg($ip);
+            }
+            @exec($pingCmd, $pingOutput, $resultCode);
+            if ($resultCode === 0) {
                 return true;
             }
 

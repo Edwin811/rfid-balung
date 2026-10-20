@@ -291,6 +291,7 @@
         return {
             lastUpdated: '{{ $isDeviceOnline ? date('H:i:s') : '--:--:--' }}',
             deviceOnline: {{ $isDeviceOnline ? 'true' : 'false' }},
+            _offlineStreak: 0,
             searchAttendance: '',
             searchUnchecked: '',
             counts: {
@@ -356,7 +357,16 @@
                         })
                         .then(data => {
                             if (data.status === 'success') {
-                                this.deviceOnline = !!data.device_online;
+                                // Debounce status: hanya set offline setelah 3x berturut-turut false
+                                if (data.device_online) {
+                                    this.deviceOnline = true;
+                                    this._offlineStreak = 0;
+                                } else {
+                                    this._offlineStreak++;
+                                    if (this._offlineStreak >= 3) {
+                                        this.deviceOnline = false;
+                                    }
+                                }
 
                                 // Deteksi entri terlambat baru
                                 if (data.data) {
@@ -378,9 +388,12 @@
                         })
                         .catch(err => {
                             console.error('Auto refresh error:', err);
-                            this.deviceOnline = false;
+                            this._offlineStreak++;
+                            if (this._offlineStreak >= 3) {
+                                this.deviceOnline = false;
+                            }
                         });
-                }, 1500); // Ultra-fast 1.5-second instant UI refresh
+                }, 3000); // 3-second refresh interval (balanced speed vs stability)
             }
         }
     }
