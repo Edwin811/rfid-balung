@@ -109,6 +109,16 @@ if %errorLevel% neq 0 (
 )
 echo [OK] PHP siap.
 
+:: 3b. Pastikan Python Laragon masuk ke PATH agar artisan dan daemon bisa memanggil python
+for %%L in (C D E F) do (
+    for /d %%P in (%%L:\laragon\bin\python\*) do (
+        if exist "%%P\python.exe" (
+            set "PATH=%%P;%%P\Scripts;!PATH!"
+            echo [%date% %time%] Python Laragon ditemukan: %%P >> "%LOGFILE%"
+        )
+    )
+)
+
 :: 4. Deteksi IP Lokal Komputer untuk Akses dari HP/Laptop Lain
 set "LOCAL_IP="
 for /f "tokens=*" %%I in ('powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike '*Loopback*' -and $_.IPAddress -notlike '169.254*' -and $_.IPAddress -notlike '127.*' } | Select-Object -First 1).IPAddress" 2^>nul') do (
