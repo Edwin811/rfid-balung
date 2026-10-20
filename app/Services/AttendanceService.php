@@ -60,9 +60,9 @@ class AttendanceService
             $ip = self::getDeviceIp();
             $port = self::getDevicePort();
 
-            // 1. Coba ping cepat (200ms) - cocok untuk mesin dengan protokol UDP
+            // 1. Coba ping (800ms) - cocok untuk mesin dengan protokol UDP / Wi-Fi
             if (PHP_OS_FAMILY === 'Windows') {
-                $pingCmd = "ping -n 1 -w 200 " . escapeshellarg($ip);
+                $pingCmd = "ping -n 1 -w 800 " . escapeshellarg($ip);
             } else {
                 $pingCmd = "ping -c 1 -W 1 " . escapeshellarg($ip);
             }
@@ -71,8 +71,8 @@ class AttendanceService
                 return true;
             }
 
-            // 2. Coba TCP socket (300ms) - cocok untuk mesin dengan protokol TCP
-            $fp = @fsockopen($ip, $port, $errno, $errstr, 0.3);
+            // 2. Coba TCP socket (1 detik) - cocok untuk mesin dengan protokol TCP
+            $fp = @fsockopen($ip, $port, $errno, $errstr, 1.0);
             if ($fp) {
                 fclose($fp);
                 return true;
