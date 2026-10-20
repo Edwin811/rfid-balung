@@ -176,11 +176,25 @@ def daemon_mode():
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Standby mendengarkan scan presensi secara realtime...")
             sys.stdout.flush()
 
+            # Siapkan file heartbeat agar Laravel tahu daemon aktif & terhubung
+            heartbeat_file = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'storage', 'logs', 'zk_daemon_heartbeat.txt'
+            )
+
             consecutive_errors = 0
             check_env_counter = 0
 
             while True:
                 time.sleep(2)
+
+                # Tulis heartbeat agar Laravel tahu daemon masih hidup & terhubung
+                try:
+                    os.makedirs(os.path.dirname(heartbeat_file), exist_ok=True)
+                    with open(heartbeat_file, 'w') as hf:
+                        hf.write(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                except Exception:
+                    pass
 
                 # Cek secara berkala apakah IP mesin diubah di .env
                 check_env_counter += 1
