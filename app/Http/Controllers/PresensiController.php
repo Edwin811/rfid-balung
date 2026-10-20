@@ -98,15 +98,6 @@ class PresensiController extends Controller
 
         $isDeviceOnline = AttendanceService::isDeviceOnline();
 
-        // Auto-sync cerdas: Jika mesin online dan belum sync dalam 30 detik terakhir, tarik data otomatis
-        if ($isDeviceOnline && \Illuminate\Support\Facades\Cache::add('auto_rfid_sync_throttle', true, 30)) {
-            try {
-                \Illuminate\Support\Facades\Artisan::call('rfid:sync');
-            } catch (\Throwable $e) {
-                // Abaikan error agar respon realtime tetap instan
-            }
-        }
-
         $query = Presensi::with('pegawai', 'updatedBy')
             ->whereDate('tanggal', $tanggal)
             ->join('pegawai', 'presensi.pegawai_id', '=', 'pegawai.id')
