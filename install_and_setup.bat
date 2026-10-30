@@ -296,14 +296,31 @@ if not "%errorLevel%"=="0" (
 
 where python >nul 2>&1
 if "%errorLevel%"=="0" (
-    python -c "import zk" >nul 2>&1
-    if not "%errorLevel%"=="0" (
-        echo       [*] Memasang modul pyzk dan requests...
-        pip install pyzk requests >nul 2>&1
+    set "PYTHON_EXEC=python"
+    for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
+        if /I "%%A"=="PYTHON_BIN" set "PYTHON_EXEC=%%B"
     )
-    echo       [OK] Python dan library pyzk siap digunakan.
-    echo [%date% %time%]   [OK] Python dan pyzk siap. >> "%LOGFILE%"
-    set "STATUS_PYTHON=OK"
+    set "PYTHON_EXEC=!PYTHON_EXEC:"=!"
+    if not exist "!PYTHON_EXEC!" (
+        echo       [WARNING] PYTHON_BIN tidak ditemukan, menggunakan Python dari PATH.
+        set "PYTHON_EXEC=python"
+    )
+
+    "!PYTHON_EXEC!" -c "import zk, requests" >nul 2>&1
+    if not "!errorLevel!"=="0" (
+        echo       [*] Memasang modul pyzk dan requests...
+        "!PYTHON_EXEC!" -m pip install -r requirements.txt >nul 2>&1
+    )
+    "!PYTHON_EXEC!" -c "import zk, requests" >nul 2>&1
+    if "!errorLevel!"=="0" (
+        echo       [OK] Python, pyzk, dan requests siap digunakan.
+        echo [%date% %time%]   [OK] Python, pyzk, dan requests siap. >> "%LOGFILE%"
+        set "STATUS_PYTHON=OK"
+    ) else (
+        echo       [ERROR] Dependensi Python gagal dipasang pada: !PYTHON_EXEC!
+        echo [%date% %time%]   [ERROR] pyzk/requests gagal dipasang. >> "%LOGFILE%"
+        set "STATUS_PYTHON=GAGAL"
+    )
 ) else (
     echo       [NOTE] Python belum aktif. Bisa diaktifkan via Laragon Tools.
     echo [%date% %time%]   [NOTE] Python belum aktif >> "%LOGFILE%"

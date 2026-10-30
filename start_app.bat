@@ -15,7 +15,7 @@ echo ===============================================================
 echo.
 
 :: 1. Hentikan PHP built-in server lama agar port 8000 tidak bentrok
-powershell -Command "Get-Process -Name php -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*artisan serve*' -or $_.CommandLine -like '*0.0.0.0:8000*' } | Stop-Process -Force" >nul 2>&1
+powershell -Command "Get-CimInstance Win32_Process -Filter \"Name='php.exe'\" | Where-Object { $_.CommandLine -match 'artisan (serve|schedule:work)' -or $_.CommandLine -match '0.0.0.0:8000' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 
 :: 2. Auto-Start / Cek MySQL Lokal dengan retry loop
 echo [*] Memeriksa database MySQL...
@@ -156,6 +156,11 @@ echo [*] Memulai Layanan Auto-Sync Mesin ZKTeco di background...
 echo [%date% %time%] Memulai ZK Daemon via start_zk_daemon.vbs >> "%LOGFILE%"
 if exist "%~dp0scripts\start_zk_daemon.vbs" (
     wscript "%~dp0scripts\start_zk_daemon.vbs" >nul 2>&1
+)
+
+:: Jalur cadangan: scheduler hanya menarik data bila daemon realtime tidak sehat.
+if exist "%~dp0scripts\start_scheduler.vbs" (
+    wscript "%~dp0scripts\start_scheduler.vbs" >nul 2>&1
 )
 
 :: 7. Tampilkan Alamat dan Jalankan Server di Port 8000
