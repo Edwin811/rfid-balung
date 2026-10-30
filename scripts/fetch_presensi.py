@@ -5,9 +5,62 @@ import os
 import json
 import sys
 import time
-import requests
+try:
+    import requests
+except ImportError:
+    sys.stderr.write('[FATAL] Modul Python "requests" belum tersedia pada Python yang menjalankan daemon. Jalankan installer/update dengan PYTHON_BIN yang benar.\n')
+    raise
 from datetime import datetime
-from zk import ZK
+try:
+    from zk import ZK
+except ImportError:
+    sys.stderr.write('[FATAL] Modul Python "pyzk" belum tersedia pada Python yang menjalankan daemon. Jalankan installer/update dengan PYTHON_BIN yang benar.\n')
+    raise
+
+
+class MachineLock:
+    """Lock lintas-proses agar daemon dan tarik manual tidak membuka ZKTeco bersamaan."""
+
+    def __init__(self):
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.path = os.path.join(base_dir, 'storage', 'logs', 'zkteco_machine.lock')
+        self.handle = None
+
+    def acquire(self):
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        self.handle = open(self.path, 'a+', encoding='utf-8')
+        try:
+            self.handle.seek(0)
+            self.handle.write('1')
+            self.handle.flush()
+            self.handle.seek(0)
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except (OSError, IOError):
+            self.release()
+            return False
+
+    def release(self):
+        if not self.handle:
+            return
+        try:
+            self.handle.seek(0)
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.handle.fileno(), fcntl.LOCK_UN)
+        except (OSError, IOError):
+            pass
+        finally:
+            self.handle.close()
+            self.handle = None
 
 # Auto-load konfigurasi dari file .env proyek
 def load_env():
@@ -62,6 +115,11 @@ def fetch_attendance():
     conn = None
     records = []
 
+    machine_lock = MachineLock()
+    if not machine_lock.acquire():
+        print(json.dumps({'status': 'busy', 'message': 'Mesin sedang diproses daemon real-time. Coba lagi setelah daemon berhenti atau koneksi pulih.'}))
+        return
+
     try:
         zk, conn = get_connection(timeout=5)
         conn.disable_device()
@@ -93,6 +151,7 @@ def fetch_attendance():
                 conn.disconnect()
             except Exception:
                 pass
+        machine_lock.release()
 
 def kirim_ke_laravel(logs):
     """Mengirim log presensi langsung ke API Laravel ADMS"""
@@ -162,12 +221,17 @@ def daemon_mode():
 
         zk = None
         conn = None
+        machine_lock = MachineLock()
         try:
+            if not machine_lock.acquire():
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [NOTE] Mesin sedang diproses sinkronisasi lain; daemon menunggu...")
+                sys.stdout.flush()
+                time.sleep(5)
+                continue
+
             zk, conn = get_connection(timeout=5)
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Terhubung ke mesin ZKTeco {ip}!")
             sys.stdout.flush()
-            kirim_heartbeat()
-
             known_keys = set()
 
             # 1. Sinkronisasi awal: Ambil semua data presensi di memori mesin
@@ -175,11 +239,12 @@ def daemon_mode():
                 attendances = conn.get_attendance()
                 if attendances:
                     logs_payload = []
+                    initial_keys = set()
                     for log in attendances:
                         ts_str = log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
                         uid_str = str(log.user_id)
                         key = f"{uid_str}_{ts_str}"
-                        known_keys.add(key)
+                        initial_keys.add(key)
                         tipe = 'rfid' if str(log.status) == '4' else 'fingerprint'
                         logs_payload.append({
                             'user_id': uid_str,
@@ -188,8 +253,11 @@ def daemon_mode():
                             'punch': getattr(log, 'punch', 0),
                             'tipe_verifikasi': tipe
                         })
-                    kirim_ke_laravel(logs_payload)
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Sinkronisasi awal berhasil: {len(logs_payload)} log diproses.")
+                    if kirim_ke_laravel(logs_payload):
+                        known_keys.update(initial_keys)
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] [OK] Sinkronisasi awal berhasil: {len(logs_payload)} log diproses.")
+                    else:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] Sinkronisasi awal belum terkirim; akan dicoba kembali.")
                     sys.stdout.flush()
             except Exception as e_att:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] [NOTE] Sinkronisasi awal presensi: {e_att}")
@@ -211,17 +279,6 @@ def daemon_mode():
             while True:
                 time.sleep(2)
 
-                # 1. Tulis file heartbeat lokal
-                try:
-                    os.makedirs(os.path.dirname(heartbeat_file), exist_ok=True)
-                    with open(heartbeat_file, 'w') as hf:
-                        hf.write(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                except Exception:
-                    pass
-
-                # 2. Kirim HTTP heartbeat langsung ke Laravel API
-                kirim_heartbeat()
-
                 # Cek secara berkala apakah IP mesin diubah di .env
                 check_env_counter += 1
                 if check_env_counter >= 5:
@@ -236,6 +293,7 @@ def daemon_mode():
                     current_attendances = conn.get_attendance()
                     consecutive_errors = 0
                     new_logs = []
+                    new_keys = set()
 
                     for log in current_attendances:
                         ts_str = log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
@@ -243,7 +301,7 @@ def daemon_mode():
                         key = f"{uid_str}_{ts_str}"
 
                         if key not in known_keys:
-                            known_keys.add(key)
+                            new_keys.add(key)
                             tipe = 'rfid' if str(log.status) == '4' else 'fingerprint'
                             new_logs.append({
                                 'user_id': uid_str,
@@ -255,8 +313,17 @@ def daemon_mode():
                             print(f"[{datetime.now().strftime('%H:%M:%S')}] [SCAN REALTIME] User ID {uid_str} ({tipe}) pada {ts_str}")
                             sys.stdout.flush()
 
-                    if new_logs:
-                        kirim_ke_laravel(new_logs)
+                    if new_logs and kirim_ke_laravel(new_logs):
+                        known_keys.update(new_keys)
+
+                    # Heartbeat hanya diperbarui sesudah pembacaan ZKTeco berhasil.
+                    try:
+                        os.makedirs(os.path.dirname(heartbeat_file), exist_ok=True)
+                        with open(heartbeat_file, 'w', encoding='utf-8') as hf:
+                            hf.write(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                    except Exception:
+                        pass
+                    kirim_heartbeat()
 
                 except Exception as poll_err:
                     consecutive_errors += 1
@@ -275,6 +342,7 @@ def daemon_mode():
                     conn.disconnect()
                 except Exception:
                     pass
+            machine_lock.release()
 
 if __name__ == '__main__':
     if '--daemon' in sys.argv or '--live' in sys.argv or '--stream' in sys.argv:

@@ -19,4 +19,4 @@ Artisan::command('inspire', function () {
 |
 */
 
-Schedule::command('rfid:sync')->everyMinute()->withoutOverlapping();
+Schedule::command('rfid:sync --scheduled')->everyMinute()->withoutOverlapping();

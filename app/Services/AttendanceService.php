@@ -116,11 +116,10 @@ class AttendanceService
     /**
      * Deteksi koneksi mesin ZKTeco secara cerdas & realtime.
      * Prioritas:
-     * 1. Cache HTTP heartbeat dari daemon Python (paling akurat)
-     * 2. Cache status umum
-     * 3. File heartbeat mtime di storage/logs/ (toleransi 60 detik)
-     * 4. Aktivitas DeviceLog 10 menit terakhir
-     * 5. Proses python.exe di Windows
+     * Status online hanya berasal dari heartbeat daemon yang sudah berhasil
+     * terhubung ke protokol ZKTeco. Keberadaan proses Python atau ICMP ping
+     * tidak cukup: keduanya sebelumnya dapat membuat UI menampilkan status
+     * "Terhubung" saat port ZKTeco atau daemon sebenarnya bermasalah.
      */
     public static function isDeviceOnline(): bool
     {
@@ -134,38 +133,15 @@ class AttendanceService
             return true;
         }
 
-        // 3. Cek file heartbeat langsung dari sistem file (toleransi 60 detik)
+        // 3. Cek file heartbeat langsung dari sistem file (toleransi 25 detik).
+        // File ini hanya diperbarui setelah pembacaan mesin berhasil.
         $heartbeatFile = storage_path('logs/zk_daemon_heartbeat.txt');
         clearstatcache(true, $heartbeatFile);
         if (file_exists($heartbeatFile)) {
             $mtime = @filemtime($heartbeatFile);
-            if ($mtime && (time() - $mtime <= 60)) {
+            if ($mtime && (time() - $mtime <= 25)) {
                 return true;
             }
-        }
-
-        // 4. Cek aktivitas DeviceLog terbaru (jika ada log masuk 10 menit terakhir, mesin aktif)
-        if (\App\Models\DeviceLog::where('created_at', '>=', now()->subMinutes(10))->exists()) {
-            return true;
-        }
-
-        // 5. Cek proses daemon Python berjalan (Windows)
-        if (PHP_OS_FAMILY === 'Windows') {
-            $output = [];
-            @exec('tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2>NUL', $output);
-            foreach ($output as $line) {
-                if (stripos($line, 'python') !== false) {
-                    return true;
-                }
-            }
-        }
-
-        // 6. Fallback: ping singkat
-        $ip = self::getDeviceIp();
-        $pingCmd = (PHP_OS_FAMILY === 'Windows') ? "ping -n 1 -w 500 " . escapeshellarg($ip) : "ping -c 1 -W 1 " . escapeshellarg($ip);
-        @exec($pingCmd, $pingOutput, $resultCode);
-        if ($resultCode === 0) {
-            return true;
         }
 
         return false;

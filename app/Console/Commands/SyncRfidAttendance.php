@@ -9,11 +9,16 @@ use Illuminate\Support\Facades\Log;
 
 class SyncRfidAttendance extends Command
 {
-    protected $signature = 'rfid:sync';
+    protected $signature = 'rfid:sync {--scheduled : Jalankan hanya saat daemon realtime tidak sehat}';
     protected $description = 'Sync attendance logs from ZKTeco RFID machine into Laravel database';
 
     public function handle(AttendanceService $attendanceService)
     {
+        if ($this->option('scheduled') && AttendanceService::isDeviceOnline()) {
+            $this->info('Daemon realtime sehat; sinkronisasi cadangan dilewati.');
+            return 0;
+        }
+
         $this->info('Memulai sinkronisasi data presensi dari mesin biometrik & RFID ZKTeco...');
         
         $pythonScript = base_path('scripts/fetch_presensi.py');
@@ -32,6 +37,10 @@ class SyncRfidAttendance extends Command
 
         if (!$result || ($result['status'] ?? '') !== 'success') {
             $msg = $result['message'] ?? trim($rawOutput);
+            if (($result['status'] ?? '') === 'busy') {
+                $this->warn($msg);
+                return 0;
+            }
             $this->warn("Mesin ZKTeco saat ini belum terhubung / mati ({$msg}). Memproses data lokal yang tersimpan...");
             $processedCount = $attendanceService->processUnprocessedDeviceLogs();
             if ($processedCount > 0) {

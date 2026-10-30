@@ -63,7 +63,8 @@ class LaporanController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('laporan.pdf', compact(
                 'jenisLaporan', 'bulan', 'tahun', 'namaBulan', 'tanggalMulai', 'tanggalSelesai',
                 'selectedPegawai', 'status', 'dataLaporan', 'logoBase64', 'printTimestamp', 'currentDateIndo'
-            ))->setPaper('a3', 'landscape');
+            // F4 portrait memberi ruang cukup untuk 31 hari satu aparatur dalam satu lembar.
+            ))->setPaper([0, 0, 612, 936]);
 
             return $pdf->stream("Laporan_Presensi_Pemkab_{$jenisLaporan}_BalungLor.pdf");
         }
@@ -103,14 +104,15 @@ class LaporanController extends Controller
         // HTML Excel Spreadsheet Export (Matriks Pemkab Style)
         $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
         $html .= '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+        $html .= '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Laporan Presensi</x:Name><x:WorksheetOptions><x:Zoom>125</x:Zoom><x:PageSetup><x:Layout x:Orientation="Landscape"/><x:FitToPage/></x:PageSetup><x:FitToPage/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
         $html .= '<style>';
-        $html .= 'body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }';
-        $html .= '.header-title { font-size: 16pt; font-weight: bold; text-align: center; color: #9f1239; }';
-        $html .= '.header-sub { font-size: 13pt; font-weight: bold; text-align: center; color: #1e293b; }';
-        $html .= '.header-period { font-size: 11pt; text-align: center; font-style: italic; color: #475569; }';
-        $html .= 'table { border-collapse: collapse; width: 100%; font-size: 10pt; }';
-        $html .= 'th { background-color: #9f1239; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #000000; padding: 6px; }';
-        $html .= 'td { border: 1px solid #000000; padding: 6px; vertical-align: middle; text-align: center; }';
+        $html .= 'body { font-family: Calibri, Arial, sans-serif; font-size: 14pt; }';
+        $html .= '.header-title { font-size: 21pt; font-weight: bold; text-align: center; color: #9f1239; }';
+        $html .= '.header-sub { font-size: 17pt; font-weight: bold; text-align: center; color: #1e293b; }';
+        $html .= '.header-period { font-size: 14pt; text-align: center; font-style: italic; color: #475569; }';
+        $html .= 'table { border-collapse: collapse; width: 100%; font-size: 13pt; }';
+        $html .= 'th { background-color: #9f1239; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #000000; padding: 9px; }';
+        $html .= 'td { border: 1px solid #000000; padding: 9px; vertical-align: middle; text-align: center; }';
         $html .= '.left { text-align: left; }';
         $html .= '.bold { font-weight: bold; }';
         $html .= '.bg-libur { background-color: #e2e8f0; color: #475569; }';
@@ -135,13 +137,14 @@ class LaporanController extends Controller
         $html .= '</table>';
 
         if ($jenisLaporan === 'bulanan') {
+            // Excel mempertahankan format matriks ringkas untuk analisis data.
             $days = $dataLaporan['days'];
             $html .= '<table><thead><tr>';
-            $html .= '<th style="width:220px;">Pegawai</th>';
+            $html .= '<th style="width:250px;">Pegawai</th>';
             foreach ($days as $day) {
                 $html .= '<th>' . $day['day_num'] . '<br><small>' . $day['day_name'] . '</small></th>';
             }
-            $html .= '<th style="width:100px;">Jumlah Jam</th>';
+            $html .= '<th style="width:120px;">Jumlah Jam</th>';
             $html .= '</tr></thead><tbody>';
 
             foreach ($dataLaporan['items'] as $item) {
@@ -181,27 +184,15 @@ class LaporanController extends Controller
             }
             $html .= '</tbody></table>';
 
-            // Keterangan Warna Kolom & Kode Status (Persis Seperti di PDF)
             $html .= '<br>';
-            $html .= '<table style="border: 1px solid #000000; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; font-size: 9pt;">';
+            $html .= '<table style="border: 1px solid #000000; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; font-size: 11pt;">';
+            $html .= '<tr><td colspan="10" style="border: 1px solid #000000; background-color: #f8fafc; font-weight: bold; padding: 8px 10px; text-align: left;">KETERANGAN WARNA KOLOM &amp; KODE STATUS:</td></tr>';
             $html .= '<tr>';
-            $html .= '<td colspan="10" style="border: 1px solid #000000; background-color: #f8fafc; font-weight: bold; padding: 6px 10px; text-align: left;">';
-            $html .= 'KETERANGAN WARNA KOLOM &amp; KODE STATUS:';
-            $html .= '</td>';
-            $html .= '</tr>';
-            $html .= '<tr>';
-            $html .= '<td style="width: 25px; background-color: #4ade80; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
-            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>HIJAU (OK / OK-OK)</b> : Hadir Tepat Waktu</td>';
-            $html .= '<td style="width: 25px; background-color: #facc15; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
-            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>KUNING (TL1 / PSW)</b> : Terlambat / Pulang Sebelum Waktu</td>';
-            $html .= '<td style="width: 25px; background-color: #38bdf8; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
-            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>BIRU (IT / SK / CT)</b> : Izin Tidak Masuk / Sakit / Cuti</td>';
-            $html .= '<td style="width: 25px; background-color: #f87171; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
-            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>MERAH (TK)</b> : Tanpa Keterangan / Tidak Hadir</td>';
-            $html .= '<td style="width: 25px; background-color: #e2e8f0; border: 1px solid #000000; text-align: center;">&nbsp;</td>';
-            $html .= '<td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; white-space: nowrap;"><b>ABU-ABU (LIBUR)</b> : Akhir Pekan (Sabtu &amp; Minggu)</td>';
-            $html .= '</tr>';
-            $html .= '</table>';
+            $html .= '<td style="width: 25px; background-color: #4ade80; border: 1px solid #000000; text-align: center;">&nbsp;</td><td style="border: 1px solid #000000; padding: 6px 8px; text-align: left;"><b>HIJAU</b>: Hadir Tepat Waktu</td>';
+            $html .= '<td style="width: 25px; background-color: #facc15; border: 1px solid #000000; text-align: center;">&nbsp;</td><td style="border: 1px solid #000000; padding: 6px 8px; text-align: left;"><b>KUNING</b>: Terlambat</td>';
+            $html .= '<td style="width: 25px; background-color: #38bdf8; border: 1px solid #000000; text-align: center;">&nbsp;</td><td style="border: 1px solid #000000; padding: 6px 8px; text-align: left;"><b>BIRU</b>: Izin / Sakit / Dispensasi</td>';
+            $html .= '<td style="width: 25px; background-color: #f87171; border: 1px solid #000000; text-align: center;">&nbsp;</td><td style="border: 1px solid #000000; padding: 6px 8px; text-align: left;"><b>MERAH</b>: Tidak Hadir</td>';
+            $html .= '</tr></table>';
         } else {
             $html .= '<table><thead><tr>';
             $html .= '<th>NO</th><th>TANGGAL</th><th>NAMA APARATUR</th><th>JABATAN</th><th>JAM MASUK</th><th>JAM PULANG</th><th>STATUS</th><th>KETERANGAN</th>';

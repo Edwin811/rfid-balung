@@ -83,6 +83,11 @@ class PresensiController extends Controller
     public function syncNow()
     {
         try {
+            if (AttendanceService::isDeviceOnline()) {
+                return redirect()->back(fallback: route('presensi.index'))
+                    ->with('success', 'Mesin sedang disinkronkan otomatis secara real-time. Tidak perlu menarik seluruh riwayat mesin lagi.');
+            }
+
             \Illuminate\Support\Facades\Artisan::call('rfid:sync');
             $output = trim(\Illuminate\Support\Facades\Artisan::output());
             return redirect()->back(fallback: route('presensi.index'))->with('success', 'Sinkronisasi mesin selesai! ' . $output);
